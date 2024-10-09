@@ -1,0 +1,7 @@
+pyserial
+rpi.gpio
+
+sudo apt install rtl_sdr
+
+pip install pyrtlsdr
+pip install pyrtlsdr[lib]
