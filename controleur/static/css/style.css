@@ -1,0 +1,113 @@
+.container {
+  margin-top: 30px;
+  margin-right: -5px;
+  margin-left: -5px;
+}
+
+.line {
+  font-size: 18px;
+  font-weight: bold;      
+
+  padding: 10px 5px;
+  background-color: #CCCCCC;
+  margin: 10px 0px;
+}
+
+
+.line.red {
+  background-color: #FF1111;
+  height: 35px;
+}
+
+.buttons {
+  float: right;
+  margin-top: -5px;
+}
+
+.text {
+  vertical-align: super;
+}
+
+.toggle {
+  height: 35px;
+  width: 100px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+img {
+  border: 1px solid #000000;
+}
+
+
+.green {
+  background-color: #00FF00;
+}
+
+.red {
+  background-color: #FF0000;
+}
+
+
+.alert {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: none;
+  text-align: center;
+
+  padding: 0.75rem 1.25rem;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  color: #721c24;
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+
+  word-wrap: break-word;
+}
+
+.config {
+  position: absolute;
+  bottom: 50%;
+  left: 10%;
+  right: 10%;
+  z-index: 10;
+  display: none;
+  text-align: center;
+
+  padding: 0.75rem 1.25rem;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  color: #000;
+  background-color: #F5F5F5;
+  border-color: #222222;
+
+  word-wrap: break-word;
+}
+
+
+.top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
+input[type='checkbox'] {
+  width:30px;
+  height:30px;
+  border:2px solid #555;
+}
+
+
+.loader {
+  background: linear-gradient(currentColor 0 0) 0 100%/0% 3px no-repeat;
+  background-color: #CCCCCC;
+  animation: load 0s linear;
+}
+
+
+@keyframes load {to{background-size: 100% 3px}}

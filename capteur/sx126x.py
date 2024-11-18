@@ -83,13 +83,18 @@ class sx126x():
     def btohex(self, b):
         return ' '.join(['{:02X}'.format(x) for x in b])        
 
-
+    #data must be bytes
     def sendraw(self, data):
+
+        if not isinstance(data, bytes):
+            print("[!] must send bytes")
+            return
+        
         ser = self.openSerial()
 
         if self.debug:
-            print('[+] sending :', self.btohex(data))
-        
+            print('[+] sending :', self.btohex(data))        
+
         ser.write(data)
         time.sleep(0.01)
         ser.close()

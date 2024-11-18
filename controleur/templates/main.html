@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <script src="/static/js/socket.io.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="icon" href="/static/favicon.ico" />
+    <title>Gestion capteurs</title>
+  </head>
+  <body>
+
+<div class="top" id="etat"></div>
+<div class="alert" role="alert" id="alert"></div>
+
+<div class="config" id="config">
+  Capteur <input type="number" id="id" size="2"><br><br>
+  Gamme : <input type="number" id="frq_start" size="5"> - 
+  <input type="number" id="frq_end" size="5"><br>
+  Sensibilité : <input type="number" id="threshold" min="1" max="10" size="2"><br><br>
+  <button onclick="save_config();" style="margin-right: 10px">Valider</button>
+  <button onclick="close_config();" style="margin-left: 10px">Annuler</button>
+</div>
+
+<br>
+<button id="b_toggle_tab" onclick="toggle_tab();">Capteurs</button>
+
+<div class="container" id="container">
+
+  <div id="tab_activite">
+    <textarea id="log_activite" rows="10" cols="50"></textarea>
+  </div>
+  <div id="tab_capteurs" style="display: none;"></div>
+
+</div>
+
+<script type="text/javascript">
+
+//fonctionnement courant
+
+let current_tab = "activite";
+const nb_scanner = {{nb_scanner}};
+const socket = io();
+
+let dict_scanner = {};
+
+//initialize
+(function() {
+  
+  //mets les valeurs par défaut dans les champs
+  close_config();
+
+  for (let i = 1; i < nb_scanner + 1; i++) {
+    add_scanner(i);
+  }
+
+})();
+
+
+//sockets
+
+function config(id, frq_start, frq_end, threshold) {
+  socket.emit("config", {'id': id, 'frq_start': frq_start, 'frq_end': frq_end, 'threshold': threshold});
+}
+
+socket.on("connect", () => {
+  update_etat(true);
+  socket.emit("set_time", Date.now() / 1000);
+});
+
+socket.on("disconnect", () => {
+  update_etat(false);
+});
+
+socket.on("got_config_ack", function(id) {
+  pop_error("C" + id + " configuré");
+});
+
+socket.on("got_frq", function(params) {
+  addr = params['addr'];
+  frq = pretty_frq(params['frq']);
+
+  let log_activite = document.getElementById('log_activite');
+  log_activite.value += "C" + addr + " - " + frq + "\n";
+
+  pop_error("C" + addr + " - " + frq);
+});
+
+
+// interface
+
+function pretty_frq(frq) {
+  strfrq = '' + (frq / 1000000);
+  return strfrq.padEnd(7, '0') + "M";
+}
+
+
+function show_loader(id, duree = 1.5) {
+    document.getElementById('etat').classList.add('loader');
+    document.getElementById('etat').style.animationDuration = duree + 's';
+    document.getElementById('etat').style.WebkitAnimationDuration = duree + 's';
+
+    setTimeout(function () {
+      document.getElementById('etat').classList.remove('loader');
+    }, duree * 1000);
+}
+
+function toggle_tab()
+{
+  let tab_activite = document.getElementById('tab_activite');
+  let tab_capteurs = document.getElementById('tab_capteurs');
+  let b_toggle_tab = document.getElementById('b_toggle_tab');
+
+  if (current_tab == "activite")
+  {
+    tab_activite.style.display = 'none';
+    tab_capteurs.style.display = 'block';
+    current_tab = "capteurs";
+    b_toggle_tab.innerText = "Activité";
+  }
+  else
+  {
+    tab_capteurs.style.display = 'none';
+    tab_activite.style.display = 'block';
+    current_tab = "activite";
+    b_toggle_tab.innerText = "Capteurs";
+  }
+}
+
+function update_etat(etat)
+{
+  let div_etat = document.getElementById('etat');
+
+  if (etat)
+  {
+    div_etat.classList.remove('red');
+    div_etat.classList.add('green');
+    div_etat.innerText = "Wifi connecté"
+  }
+  else
+  {
+    div_etat.classList.remove('green');
+    div_etat.classList.add('red');
+    div_etat.innerText = "! Wifi déconnecté !"
+  }
+}
+
+function add_scanner(id)
+{
+  const tpl = document.createElement('template');
+  tpl.innerHTML = get_tpl(id);
+
+  let container = document.getElementById('tab_capteurs');
+  container.appendChild(tpl.content.firstChild);
+}
+
+function get_tpl(id)
+{
+  return '<div class="line">' +
+        '<span id="name-'+ id +'">Capteur '+ id +'</span>' +
+
+        '<span class="buttons">' +
+          '<button onclick="show_config(\''+ id +'\');">Config</buton>' +
+        '</span>' +
+      '</div>';
+}
+
+//
+
+//config
+function show_config(id) {
+  document.getElementById('id').value = id;
+  document.getElementById('config').style = 'display: block';
+}
+
+function save_config() {
+  let id = document.getElementById('id').value;
+  let frq_start = document.getElementById('frq_start').value;
+  let frq_end = document.getElementById('frq_end').value;
+  let threshold = document.getElementById('threshold').value;
+
+  config(id, frq_start, frq_end, threshold); 
+  close_config();
+}
+
+function close_config() {
+  document.getElementById('frq_start').value = '400';
+  document.getElementById('frq_end').value = '420';
+  document.getElementById('threshold').value = '5';
+  document.getElementById('config').style = 'display: none';
+}
+
+function pop_error(value) {
+  document.getElementById('alert').style = 'display: block';
+  document.getElementById('alert').innerText = value;
+
+  setTimeout(function () {
+    document.getElementById('alert').style = 'display: none';
+  }, 4000);
+}
+
+
+</script>
+
+  </body>
+</html>
