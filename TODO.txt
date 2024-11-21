@@ -1,15 +1,15 @@
 Général
-- support multi-clé SDR
-- détection auto du nombre de clés
+X - support multi-clé SDR
+X - détection auto du nombre de clés
 - gestion de groupes (de capteur/de clés)
 - support de DSD
-- RTC, ou script date + hwclock
-- le client définit le nombre de modules
-- msg PING
+X - RTC, ou script date + hwclock
+X - le client définit le nombre de modules
+X - msg PING
 - msg INFO : nb clés, config, gps
 X - ne pas reconfigurer le capteur si une des valeurs = 0
 - afficher le loader
-- revoir le textarea, prevoir autoscroll
+X - revoir le textarea, prevoir autoscroll
 
 
 

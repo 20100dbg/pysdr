@@ -10,16 +10,48 @@
   </head>
   <body>
 
+<style type="text/css">
+.log_activite {
+  width: 100%;
+  overflow: auto;
+  margin: 0;
+  height: 70vh;
+}
+
+.log_row {
+  display: block;
+  background: #EEEEEE;
+  margin-bottom: 5px;
+  margin-left: 10px;
+}
+
+</style>
+
 <div class="top" id="etat"></div>
 <div class="alert" role="alert" id="alert"></div>
 
 <div class="config" id="config">
   Capteur <input type="number" id="id" size="2"><br><br>
-  Gamme : <input type="number" id="frq_start" size="5"> - 
-  <input type="number" id="frq_end" size="5"><br>
-  Sensibilité : <input type="number" id="threshold" min="1" max="10" size="2"><br><br>
+  
+  <center>
+    <table>
+      <tr><th>Frq debut</th><th>Frq fin</th><th>Sensibilité</th></tr>
+      <tr><td><input type="number" id="frq_start" size="5"></td><td><input type="number" id="frq_end" size="5"></td><td><input type="number" id="threshold" min="1" max="10" size="2"></td></tr>
+      <tr><td><input disabled type="number" id="frq_start1" size="5"></td><td><input disabled type="number" id="frq_end1" size="5"></td><td><input disabled type="number" id="threshold1" min="1" max="10" size="2"></td></tr>
+      <tr><td><input disabled type="number" id="frq_start2" size="5"></td><td><input disabled type="number" id="frq_end2" size="5"></td><td><input disabled type="number" id="threshold2" min="1" max="10" size="2"></td></tr>
+      <tr><td><input disabled type="number" id="frq_start3" size="5"></td><td><input disabled type="number" id="frq_end3" size="5"></td><td><input disabled type="number" id="threshold3" min="1" max="10" size="2"></td></tr>
+    </table>
+  </center>
+  Configuration appliquée : <input disabled type="checkbox" id="applied"><br><br>
+
   <button onclick="save_config();" style="margin-right: 10px">Valider</button>
   <button onclick="close_config();" style="margin-left: 10px">Annuler</button>
+</div>
+
+
+<div class="config" id="config_nb_module">
+  Nb capteurs : <input type="number" id="nb_module" size="2" value="1" min="1"><br><br>
+  <button onclick="set_nb_module();">Valider</button>
 </div>
 
 <br>
@@ -28,9 +60,13 @@
 <div class="container" id="container">
 
   <div id="tab_activite">
-    <textarea id="log_activite" rows="10" cols="50"></textarea>
+    <!--<textarea id="log_activite" rows="30" cols="40"></textarea>-->
+    <div id="log_activite" class="log_activite"></div>
   </div>
-  <div id="tab_capteurs" style="display: none;"></div>
+
+  <div id="tab_modules" style="display: none;">
+    
+  </div>
 
 </div>
 
@@ -39,25 +75,44 @@
 //fonctionnement courant
 
 let current_tab = "activite";
-const nb_scanner = {{nb_scanner}};
 const socket = io();
 
-let dict_scanner = {};
+let dict_module = {};
 
 //initialize
 (function() {
+
+  let detections = {{detections}};
+  for (var i = 0; i < detections.length; i++) {
+    add_detection(detections[i][0], detections[i][1], detections[i][2]);
+  }
+
+  let modules = {{modules}};
+  if (modules.length == 0) {
+    document.getElementById('config_nb_module').style = 'display: block';
+  }
+  else
+  {
+    for (var i = 0; i < modules.length; i++) {
+      dict_module[i+1] = {'frq_start': modules[0][1], 'frq_end': modules[0][2], 'threshold': modules[0][3]};
+      add_dom_module(i+1);
+    }
+  }
   
   //mets les valeurs par défaut dans les champs
   close_config();
-
-  for (let i = 1; i < nb_scanner + 1; i++) {
-    add_scanner(i);
-  }
-
 })();
 
 
 //sockets
+
+function ping(id_module) {
+  socket.emit("ping", id_module);
+}
+
+function send_nb_module() {
+  socket.emit("set_nb_module", nb_module);
+}
 
 function config(id, frq_start, frq_end, threshold) {
   socket.emit("config", {'id': id, 'frq_start': frq_start, 'frq_end': frq_end, 'threshold': threshold});
@@ -65,7 +120,7 @@ function config(id, frq_start, frq_end, threshold) {
 
 socket.on("connect", () => {
   update_etat(true);
-  socket.emit("set_time", Date.now() / 1000);
+  socket.emit("set_time", Date.now());
 });
 
 socket.on("disconnect", () => {
@@ -73,29 +128,52 @@ socket.on("disconnect", () => {
 });
 
 socket.on("got_config_ack", function(id) {
+  dict_module[id]['applied'] = true;
   pop_error("C" + id + " configuré");
+});
+
+socket.on("got_pong", function(id) {
+  pop_error("C" + id + " répond");
 });
 
 socket.on("got_frq", function(params) {
   addr = params['addr'];
-  frq = pretty_frq(params['frq']);
+  gdh = params['gdh'];
+  frq = params['frq'];
 
-  let log_activite = document.getElementById('log_activite');
-  log_activite.value += "C" + addr + " - " + frq + "\n";
-
-  pop_error("C" + addr + " - " + frq);
+  add_detection(addr, gdh, frq);
+  pop_error("C" + addr + " - " + pretty_frq(frq));
 });
 
 
 // interface
 
+function add_detection(id_module, gdh, frq) {
+  let log_activite = document.getElementById('log_activite');
+  //log_activite.value += pretty_gdh(gdh) + " - C" + id_module + " - " + pretty_frq(frq) + "\n";
+  //log_activite.scrollTop = log_activite.scrollHeight;
+  
+
+  const tpl = document.createElement('template');
+  log_row = pretty_gdh(gdh) + " - C" + id_module + " - " + pretty_frq(frq);
+  tpl.innerHTML = '<span class="log_row">'+ log_row +'</span>'
+
+  log_activite.appendChild(tpl.content.firstChild);
+  log_activite.scrollTop = log_activite.scrollHeight;
+}
+
 function pretty_frq(frq) {
-  strfrq = '' + (frq / 1000000);
-  return strfrq.padEnd(7, '0') + "M";
+  frq = frq.toString();
+  return frq.substring(0,3) + '.' + frq.substring(3,6) + "M";
+}
+
+function pretty_gdh(gdh) {
+  gdh = new Date(gdh * 1000);
+  return gdh.toLocaleString();
 }
 
 
-function show_loader(id, duree = 1.5) {
+function show_loader(id, duree = 1) {
     document.getElementById('etat').classList.add('loader');
     document.getElementById('etat').style.animationDuration = duree + 's';
     document.getElementById('etat').style.WebkitAnimationDuration = duree + 's';
@@ -108,19 +186,19 @@ function show_loader(id, duree = 1.5) {
 function toggle_tab()
 {
   let tab_activite = document.getElementById('tab_activite');
-  let tab_capteurs = document.getElementById('tab_capteurs');
+  let tab_modules = document.getElementById('tab_modules');
   let b_toggle_tab = document.getElementById('b_toggle_tab');
 
   if (current_tab == "activite")
   {
     tab_activite.style.display = 'none';
-    tab_capteurs.style.display = 'block';
+    tab_modules.style.display = 'block';
     current_tab = "capteurs";
     b_toggle_tab.innerText = "Activité";
   }
   else
   {
-    tab_capteurs.style.display = 'none';
+    tab_modules.style.display = 'none';
     tab_activite.style.display = 'block';
     current_tab = "activite";
     b_toggle_tab.innerText = "Capteurs";
@@ -145,12 +223,30 @@ function update_etat(etat)
   }
 }
 
-function add_scanner(id)
+//gestion module
+
+function set_nb_module()
+{
+  let nb_module = parseInt(document.getElementById('nb_module').value);
+  send_nb_module(nb_module);
+
+  document.getElementById('tab_modules').innerHTML = '';
+
+  for (let i = 1; i < nb_module + 1; i++) {
+    dict_module[i] = {'frq_start': 400, 'frq_end': 420, 'threshold': 5, 'applied': true};
+
+    add_dom_module(i);
+  }
+
+  document.getElementById('config_nb_module').style = 'display: none';
+}
+
+function add_dom_module(id)
 {
   const tpl = document.createElement('template');
   tpl.innerHTML = get_tpl(id);
 
-  let container = document.getElementById('tab_capteurs');
+  let container = document.getElementById('tab_modules');
   container.appendChild(tpl.content.firstChild);
 }
 
@@ -160,6 +256,7 @@ function get_tpl(id)
         '<span id="name-'+ id +'">Capteur '+ id +'</span>' +
 
         '<span class="buttons">' +
+          '<button onclick="ping(\''+ id +'\');">Ping</buton>' +
           '<button onclick="show_config(\''+ id +'\');">Config</buton>' +
         '</span>' +
       '</div>';
@@ -168,9 +265,16 @@ function get_tpl(id)
 //
 
 //config
+
 function show_config(id) {
   document.getElementById('id').value = id;
   document.getElementById('config').style = 'display: block';
+
+  document.getElementById('frq_start').value = dict_module[id]['frq_start'];
+  document.getElementById('frq_end').value = dict_module[id]['frq_end'];
+  document.getElementById('threshold').value = dict_module[id]['threshold'];
+  document.getElementById('applied').checked = dict_module[id]['applied'];
+  
 }
 
 function save_config() {
@@ -179,14 +283,21 @@ function save_config() {
   let frq_end = document.getElementById('frq_end').value;
   let threshold = document.getElementById('threshold').value;
 
+  dict_module[id]['frq_start'] = frq_start;
+  dict_module[id]['frq_end'] = frq_end;
+  dict_module[id]['threshold'] = threshold;
+  dict_module[id]['applied'] = false;
+
   config(id, frq_start, frq_end, threshold); 
   close_config();
 }
 
 function close_config() {
+  /*
   document.getElementById('frq_start').value = '400';
   document.getElementById('frq_end').value = '420';
   document.getElementById('threshold').value = '5';
+  */
   document.getElementById('config').style = 'display: none';
 }
 

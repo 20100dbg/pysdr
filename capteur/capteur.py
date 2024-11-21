@@ -13,16 +13,6 @@ def getmsgkey(msgvalue):
     idx = list(dict_msg.values()).index(msgvalue)
     return list(dict_msg.keys())[idx]
 
-## type MSG
-# frequence active
-# config gamme + seuil
-# ACK config
-
-## format MSG
-# type msg (1)
-# ID capteur (1)
-# data (X)
-
 
 def callback_lora(data):
 
@@ -52,6 +42,9 @@ def callback_lora(data):
 
         send(dict_msg["CONF_ACK"], local_addr, b'')
 
+    elif dict_msg["PING"] == msg_type:
+        send(dict_msg["PONG"], local_addr, b'')
+
 
 
 def callback_scanner(frq):
@@ -71,7 +64,7 @@ def send(msg_type, addr, data):
 signal(SIGINT, handler)
 
 local_addr = int(sys.argv[1])
-dict_msg = {"FRQ": 0, "CONF": 1, "CONF_ACK": 2 }
+dict_msg = {"FRQ": 0, "CONF": 1, "CONF_ACK": 2, "PING": 3, "PONG": 4 }
 
 
 global running
@@ -80,8 +73,18 @@ running = True
 lora = lora(channel=18, address=local_addr, callback=callback_lora)
 lora.activate()
 
-frq_start = 400e6
-frq_end = 415e6
+frq_start = 400*10**6
+frq_end = 420*10**6
+
+nb_sdr = len(RtlSdr.get_device_serial_addresses())
+scanners = []
+
+"""
+for _ in range(nb_sdr):
+    s = scanner(frq_start, frq_end, callback_scanner)
+    s.activate()
+    scanners.append(s)
+"""
 
 scanner = scanner(frq_start, frq_end, callback_scanner)
 scanner.activate()
@@ -89,6 +92,10 @@ scanner.activate()
 while running:
     time.sleep(0.01)
 
-
 lora.stop()
 scanner.stop()
+
+"""
+for s in scanners:
+    s.stop()
+"""
