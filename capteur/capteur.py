@@ -16,34 +16,33 @@ def getmsgkey(msgvalue):
 
 def callback_lora(data):
 
-    print(f"Received {data}")
+    #print(f"Received {data}")
 
-    msg_type = int.from_bytes(data[0:1])
-    msg_to = int.from_bytes(data[1:2])
+    if len(data) >= 2:
+        msg_type = int.from_bytes(data[0:1])
+        msg_to = int.from_bytes(data[1:2])
 
-    #print(f"to : {msg_to} - MSG : {getmsgkey(msg_type)}")
-    if msg_to != local_addr:
-        return
-
-    if dict_msg["CONF"] == msg_type:
-        frq_start = int.from_bytes(data[2:4])
-        frq_end = int.from_bytes(data[4:6])
-        threshold = int.from_bytes(data[6:7])
-
-        if frq_start == 0 or frq_end == 0 or threshold == 0:
+        #print(f"to : {msg_to} - MSG : {getmsgkey(msg_type)}")
+        if msg_to != local_addr:
             return
 
-        new_threshold = (threshold / 10) + 0.4
+        if dict_msg["CONF"] == msg_type and len(data) == 7:
+            frq_start = int.from_bytes(data[2:4])
+            frq_end = int.from_bytes(data[4:6])
+            threshold = int.from_bytes(data[6:7])
+            
+            #new_threshold = (threshold / 10) + 0.4
+            new_threshold = threshold / 10
 
-        scanner.set_threshold(new_threshold)
-        scanner.set_frq(frq_start, frq_end)
+            scanner.set_threshold(new_threshold)
+            scanner.set_frq(frq_start, frq_end)
 
-        print(f"new conf : {frq_start} - {frq_end} / {new_threshold}")
+            #print(f"new conf : {frq_start} - {frq_end} / {new_threshold}")
 
-        send(dict_msg["CONF_ACK"], local_addr, b'')
+            send(dict_msg["CONF_ACK"], local_addr, data[2:7])
 
-    elif dict_msg["PING"] == msg_type:
-        send(dict_msg["PONG"], local_addr, b'')
+        elif dict_msg["PING"] == msg_type:
+            send(dict_msg["PONG"], local_addr, b'')
 
 
 
@@ -57,7 +56,7 @@ def send(msg_type, addr, data):
     msg += addr.to_bytes(1, 'big')
     msg += data
 
-    print(f"Sending {msg}")
+    #print(f"Sending {msg}")
     lora.send(msg)
     
 

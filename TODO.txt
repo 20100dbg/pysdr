@@ -1,16 +1,16 @@
 Général
 X - support multi-clé SDR
 X - détection auto du nombre de clés
-- gestion de groupes (de capteur/de clés)
-- support de DSD
 X - RTC, ou script date + hwclock
 X - le client définit le nombre de modules
 X - msg PING
-- msg INFO : nb clés, config, gps
 X - ne pas reconfigurer le capteur si une des valeurs = 0
-- afficher le loader
+X - afficher le loader
 X - revoir le textarea, prevoir autoscroll
-
+- gestion de groupes (de capteur/de clés)
+- support de DSD
+- msg INFO : nb clés, config, gps
+- les capteurs enregistrent en local la config
 
 
 Algorithme
@@ -27,7 +27,7 @@ DSD
 -- CC
 
 BDD
-- config des capteurs
-- liste des evenements
+X - config des capteurs
+X - liste des evenements
+X - dump CSV
 - position GPS
-- dump CSV

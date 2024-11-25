@@ -4,7 +4,9 @@ CREATE TABLE IF NOT EXISTS module (
     last_ping REAL,
     frq_start INTEGER, 
     frq_end INTEGER, 
-    threshold INTEGER);
+    threshold INTEGER,
+    config_applied BOOLEAN
+    );
 
 CREATE TABLE IF NOT EXISTS detection (
     id INTEGER PRIMARY KEY AUTOINCREMENT, 

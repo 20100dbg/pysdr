@@ -90,7 +90,7 @@ class scanner:
                     max_frq = self.sdr.center_freq
             
             elif frq_start_detection != 0:
-                print(f"\nFound activity on {self.pretty_frq(max_frq)} / start {frq_start_detection}")
+                #print(f"\nFound activity on {self.pretty_frq(max_frq)} / start {frq_start_detection}")
                 self.callback(max_frq)
 
                 frq_start_detection = 0
@@ -100,7 +100,7 @@ class scanner:
 
             if self.new_conf:
                 frq = self.frq_start
-                print("Set up new frq_start / frq_end")
+                #print("Set up new frq_start / frq_end")
                 self.new_conf = False
 
             if frq > self.frq_end:

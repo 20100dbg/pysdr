@@ -5,6 +5,7 @@ import sx126x
 import threading
 import time
 import os
+from datetime import datetime
 from flask import Flask, request, make_response
 from flask_socketio import SocketIO, emit
 from signal import signal, SIGINT
@@ -18,11 +19,10 @@ def main():
     cursor.execute("SELECT id_module, gdh, frq FROM detection")
     detections = cursor.fetchall()
 
-    cursor.execute("SELECT id, frq_start, frq_end, threshold FROM module")
+    cursor.execute("SELECT id, frq_start, frq_end, threshold, config_applied FROM module")
     modules = cursor.fetchall()
 
     tpl = open('templates/main.html', 'r').read()
-    tpl = tpl.replace('{{nb_module}}', str(nb_module))
     tpl = tpl.replace('{{modules}}', json.dumps(modules))
     tpl = tpl.replace('{{detections}}', json.dumps(detections))
 
@@ -37,11 +37,18 @@ def download():
     cursor.execute("SELECT id_module, gdh, frq FROM detection")
     rows = cursor.fetchall()
     csv = 'id_module;gdh;frq\n'
+
     for row in rows:
-        csv += ';'.join(row) + '\n'
+        gdh = datetime.fromtimestamp(row[1])
+        frq = pretty_frq(row[2])
+        csv += f'{row[0]};{gdh};{frq}\n'
+
+    dt = datetime.now()
+    gdh = dt.strftime("%d/%m/%Y %H:%M:%S")
 
     response = make_response(csv)
-    response.headers["Content-Disposition"] = 'attachment; filename="activite.csv"'
+    response.headers["Content-Disposition"] = f'attachment; filename="{gdh}_activite.csv"'
+    response.headers["Content-Type"] = f'text/csv'
     response.headers["Pragma"] = "public"
     response.headers["Cache-Control"] = "must-revalidate, post-check=0, pre-check=0"
     return response
@@ -55,7 +62,7 @@ def config(params):
     threshold = int(params['threshold'])
     gdh = get_time()
     
-    cursor.execute(f'UPDATE module SET frq_start={frq_start}, frq_end={frq_end}, threshold={threshold}, last_config={gdh} WHERE id={addr}')
+    cursor.execute(f'UPDATE module SET frq_start={frq_start}, frq_end={frq_end}, threshold={threshold}, last_config={gdh}, config_applied=false WHERE id={addr}')
     db.commit()
 
     data = frq_start.to_bytes(2, 'big') + frq_end.to_bytes(2, 'big') + threshold.to_bytes(1, 'big')
@@ -80,8 +87,8 @@ def set_nb_module(nb):
     cursor.execute(f'DELETE FROM module')
     db.commit()
 
-    data = [(id_module, 0, 0, 400, 420, 5) for id_module in range(1,nb_module+1)]
-    cursor.executemany("INSERT INTO module VALUES (?, ?, ?, ?, ?, ?)", data)
+    data = [(id_module, 0, 0, 400, 420, 0.9) for id_module in range(1,nb_module+1)]
+    cursor.executemany("INSERT INTO module VALUES (?, ?, ?, ?, ?, ?, True)", data)
     db.commit()
 
 
@@ -91,33 +98,58 @@ def ping(id_module):
     send(dict_msg['PING'], addr, b'')
 
 
+@socketio.on('reset_db')
+def reset_db(params):
+    cursor.execute(f'DELETE FROM module')
+    db.commit()
+
+    cursor.execute(f'DELETE FROM detection')
+    db.commit()
+
+
+
+
 def get_time():
     if time_setup:
         return time.time()
     return 0
 
 
+def pretty_frq(frq):
+    strfrq = str(frq/1000000)
+    strfrq = strfrq.ljust(7, '0')
+    return strfrq + 'M'
+
+
 def handler_msg(data):
 
-    msg_type = int.from_bytes(data[0:1])
-    addr = int.from_bytes(data[1:2])    
-    gdh = get_time()
-    print(f"from : {addr} - MSG : {getmsgkey(msg_type)}")
 
-    if dict_msg["FRQ"] == msg_type:        
-        frq = int.from_bytes(data[2:6])
+    if len(data) >= 2:
+        msg_type = int.from_bytes(data[0:1])
+        addr = int.from_bytes(data[1:2])    
+        gdh = get_time()
+        #print(f"from : {addr} - MSG : {getmsgkey(msg_type)}")
 
-        cursor.execute(f'INSERT INTO detection (id_module, gdh, frq) VALUES ("{addr}", "{gdh}", "{frq}")')
-        db.commit()
-        socketio.emit('got_frq', {'gdh': gdh, 'addr': addr, 'frq': frq})
+        if dict_msg["FRQ"] == msg_type and len(data) == 6:        
+            frq = int.from_bytes(data[2:6])
 
-    elif dict_msg["CONF_ACK"] == msg_type:
-        socketio.emit('got_config_ack', addr)
+            cursor.execute(f'INSERT INTO detection (id_module, gdh, frq) VALUES ("{addr}", "{gdh}", "{frq}")')
+            db.commit()
+            socketio.emit('got_frq', {'gdh': gdh, 'addr': addr, 'frq': frq})
 
-    elif dict_msg["PONG"] == msg_type:
-        cursor.execute(f'UPDATE module SET last_ping={gdh} WHERE id={addr}')
-        db.commit()
-        socketio.emit('got_pong', addr)
+        elif dict_msg["CONF_ACK"] == msg_type and len(data) == 7:
+            
+            cursor.execute(f"SELECT frq_start, frq_end, threshold FROM module WHERE id={addr}")
+            module = cursor.fetchone()
+
+            if module[0] == int.from_bytes(data[2:4]) and module[1] == int.from_bytes(data[4:6]) and module[2] == int.from_bytes(data[6:7]):
+                cursor.execute(f'UPDATE module SET config_applied=true WHERE id={addr}')
+                socketio.emit('got_config_ack', addr)
+
+        elif dict_msg["PONG"] == msg_type:
+            cursor.execute(f'UPDATE module SET last_ping={gdh} WHERE id={addr}')
+            db.commit()
+            socketio.emit('got_pong', addr)
 
 
 def listener():
@@ -136,13 +168,14 @@ def send(msg_type, addr, data):
     msg += addr.to_bytes(1, 'big')
     msg += data
 
-    print(f"Sending {msg}")
+    #print(f"Sending {msg}")
     lora.sendraw(msg)
 
 
 def getmsgkey(msg_type):
     idx = list(dict_msg.values()).index(msg_type)
     return list(dict_msg.keys())[idx]
+
 
 """
 def init_module(id_module):

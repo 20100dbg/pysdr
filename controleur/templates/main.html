@@ -10,33 +10,16 @@
   </head>
   <body>
 
-<style type="text/css">
-.log_activite {
-  width: 100%;
-  overflow: auto;
-  margin: 0;
-  height: 70vh;
-}
-
-.log_row {
-  display: block;
-  background: #EEEEEE;
-  margin-bottom: 5px;
-  margin-left: 10px;
-}
-
-</style>
-
 <div class="top" id="etat"></div>
 <div class="alert" role="alert" id="alert"></div>
 
-<div class="config" id="config">
+<div class="config" id="config_module">
   Capteur <input type="number" id="id" size="2"><br><br>
   
   <center>
     <table>
-      <tr><th>Frq debut</th><th>Frq fin</th><th>Sensibilité</th></tr>
-      <tr><td><input type="number" id="frq_start" size="5"></td><td><input type="number" id="frq_end" size="5"></td><td><input type="number" id="threshold" min="1" max="10" size="2"></td></tr>
+      <tr><th>Frq debut</th><th>Frq fin</th><th>Seuil (0.1-1.5)</th></tr>
+      <tr><td><input type="number" id="frq_start" size="5"></td><td><input type="number" id="frq_end" size="5"></td><td><input type="number" id="threshold" min="0.1" max="1.5" step="0.1" size="2"></td></tr>
       <tr><td><input disabled type="number" id="frq_start1" size="5"></td><td><input disabled type="number" id="frq_end1" size="5"></td><td><input disabled type="number" id="threshold1" min="1" max="10" size="2"></td></tr>
       <tr><td><input disabled type="number" id="frq_start2" size="5"></td><td><input disabled type="number" id="frq_end2" size="5"></td><td><input disabled type="number" id="threshold2" min="1" max="10" size="2"></td></tr>
       <tr><td><input disabled type="number" id="frq_start3" size="5"></td><td><input disabled type="number" id="frq_end3" size="5"></td><td><input disabled type="number" id="threshold3" min="1" max="10" size="2"></td></tr>
@@ -44,8 +27,8 @@
   </center>
   Configuration appliquée : <input disabled type="checkbox" id="applied"><br><br>
 
-  <button onclick="save_config();" style="margin-right: 10px">Valider</button>
-  <button onclick="close_config();" style="margin-left: 10px">Annuler</button>
+  <button onclick="save_config_module();" style="margin-right: 10px">Valider</button>
+  <button onclick="close_config_module();" style="margin-left: 10px">Annuler</button>
 </div>
 
 
@@ -55,18 +38,26 @@
 </div>
 
 <br>
-<button id="b_toggle_tab" onclick="toggle_tab();">Capteurs</button>
+<button onclick="toggle_tab('modules');">Capteurs</button>
+<button onclick="toggle_tab('detections');">Détections</button>
+<button onclick="toggle_tab('advanced');">Avancé</button>
 
 <div class="container" id="container">
 
-  <div id="tab_activite">
-    <!--<textarea id="log_activite" rows="30" cols="40"></textarea>-->
-    <div id="log_activite" class="log_activite"></div>
+  <div id="tab_detections">
+    <!--<textarea id="log_detections" rows="30" cols="40"></textarea>-->
+    <div id="log_detections" class="log_detections"></div>
   </div>
 
-  <div id="tab_modules" style="display: none;">
-    
+  <div id="tab_modules" style="display: none;">    
   </div>
+
+  <div id="tab_advanced" style="display: none;">
+    <button onclick="download_csv();">Télécharger CSV</button>
+    <br><br>
+    <button onclick="reset_db();">Reset BDD</button>
+  </div>
+
 
 </div>
 
@@ -74,9 +65,7 @@
 
 //fonctionnement courant
 
-let current_tab = "activite";
 const socket = io();
-
 let dict_module = {};
 
 //initialize
@@ -94,27 +83,48 @@ let dict_module = {};
   else
   {
     for (var i = 0; i < modules.length; i++) {
-      dict_module[i+1] = {'frq_start': modules[0][1], 'frq_end': modules[0][2], 'threshold': modules[0][3]};
+      threshold = modules[0][3] / 10;
+      dict_module[i+1] = {'frq_start': modules[0][1], 'frq_end': modules[0][2], 'threshold': threshold, 'applied': modules[0][4]};
       add_dom_module(i+1);
     }
   }
   
   //mets les valeurs par défaut dans les champs
-  close_config();
+  close_config_module();
 })();
+
+
+function download_csv() {
+  location.href = '/download';
+}
+
+function reset_db() {
+  if (confirm('Remettre à zéro la base de données ?')) {
+    send_reset_db();
+    setTimeout(function () { location.reload(); }, 750);
+  }
+}
 
 
 //sockets
 
-function ping(id_module) {
+function send_reset_db() {
+  show_loader(0.5);
+  socket.emit("reset_db", {});
+}
+
+function send_ping(id_module) {
+  show_loader();
   socket.emit("ping", id_module);
 }
 
-function send_nb_module() {
+function send_nb_module(nb_module) {
   socket.emit("set_nb_module", nb_module);
 }
 
-function config(id, frq_start, frq_end, threshold) {
+function send_config_module(id, frq_start, frq_end, threshold) {
+  show_loader();
+  threshold = threshold * 10;
   socket.emit("config", {'id': id, 'frq_start': frq_start, 'frq_end': frq_end, 'threshold': threshold});
 }
 
@@ -149,22 +159,27 @@ socket.on("got_frq", function(params) {
 // interface
 
 function add_detection(id_module, gdh, frq) {
-  let log_activite = document.getElementById('log_activite');
-  //log_activite.value += pretty_gdh(gdh) + " - C" + id_module + " - " + pretty_frq(frq) + "\n";
-  //log_activite.scrollTop = log_activite.scrollHeight;
+  let log_detections = document.getElementById('log_detections');
+  //log_detections.value += pretty_gdh(gdh) + " - C" + id_module + " - " + pretty_frq(frq) + "\n";
+  //log_detections.scrollTop = log_detections.scrollHeight;
   
 
   const tpl = document.createElement('template');
   log_row = pretty_gdh(gdh) + " - C" + id_module + " - " + pretty_frq(frq);
   tpl.innerHTML = '<span class="log_row">'+ log_row +'</span>'
 
-  log_activite.appendChild(tpl.content.firstChild);
-  log_activite.scrollTop = log_activite.scrollHeight;
+  log_detections.appendChild(tpl.content.firstChild);
+  log_detections.scrollTop = log_detections.scrollHeight;
 }
 
 function pretty_frq(frq) {
-  frq = frq.toString();
-  return frq.substring(0,3) + '.' + frq.substring(3,6) + "M";
+
+  x = (frq / 1000000).toString();
+  tab = x.split('.');
+  left = tab[0].padStart(3, '0');
+  right = (tab.length == 1) ? "000" : tab[1].substring(0,3).padEnd(3, '0');
+  return left + '.' + right + 'M';
+
 }
 
 function pretty_gdh(gdh) {
@@ -173,7 +188,7 @@ function pretty_gdh(gdh) {
 }
 
 
-function show_loader(id, duree = 1) {
+function show_loader(duree = 1) {
     document.getElementById('etat').classList.add('loader');
     document.getElementById('etat').style.animationDuration = duree + 's';
     document.getElementById('etat').style.WebkitAnimationDuration = duree + 's';
@@ -183,26 +198,19 @@ function show_loader(id, duree = 1) {
     }, duree * 1000);
 }
 
-function toggle_tab()
+function toggle_tab(tab)
 {
-  let tab_activite = document.getElementById('tab_activite');
+  let tab_detections = document.getElementById('tab_detections');
   let tab_modules = document.getElementById('tab_modules');
-  let b_toggle_tab = document.getElementById('b_toggle_tab');
+  let tab_advanced = document.getElementById('tab_advanced');
+  
+  tab_detections.style.display = 'none';
+  tab_modules.style.display = 'none';
+  tab_advanced.style.display = 'none';
 
-  if (current_tab == "activite")
-  {
-    tab_activite.style.display = 'none';
-    tab_modules.style.display = 'block';
-    current_tab = "capteurs";
-    b_toggle_tab.innerText = "Activité";
-  }
-  else
-  {
-    tab_modules.style.display = 'none';
-    tab_activite.style.display = 'block';
-    current_tab = "activite";
-    b_toggle_tab.innerText = "Capteurs";
-  }
+  if (tab == "detections") tab_detections.style.display = 'block';
+  else if (tab == "modules") tab_modules.style.display = 'block';
+  else if (tab == "advanced") tab_advanced.style.display = 'block';
 }
 
 function update_etat(etat)
@@ -233,7 +241,7 @@ function set_nb_module()
   document.getElementById('tab_modules').innerHTML = '';
 
   for (let i = 1; i < nb_module + 1; i++) {
-    dict_module[i] = {'frq_start': 400, 'frq_end': 420, 'threshold': 5, 'applied': true};
+    dict_module[i] = {'frq_start': 400, 'frq_end': 420, 'threshold': 0.9, 'applied': true};
 
     add_dom_module(i);
   }
@@ -256,8 +264,8 @@ function get_tpl(id)
         '<span id="name-'+ id +'">Capteur '+ id +'</span>' +
 
         '<span class="buttons">' +
-          '<button onclick="ping(\''+ id +'\');">Ping</buton>' +
-          '<button onclick="show_config(\''+ id +'\');">Config</buton>' +
+          '<button onclick="send_ping(\''+ id +'\');" style="margin-right: 20px">Ping</buton>' +
+          '<button onclick="show_config_module(\''+ id +'\');">Config</buton>' +
         '</span>' +
       '</div>';
 }
@@ -266,9 +274,9 @@ function get_tpl(id)
 
 //config
 
-function show_config(id) {
+function show_config_module(id) {
   document.getElementById('id').value = id;
-  document.getElementById('config').style = 'display: block';
+  document.getElementById('config_module').style = 'display: block';
 
   document.getElementById('frq_start').value = dict_module[id]['frq_start'];
   document.getElementById('frq_end').value = dict_module[id]['frq_end'];
@@ -277,7 +285,7 @@ function show_config(id) {
   
 }
 
-function save_config() {
+function save_config_module() {
   let id = document.getElementById('id').value;
   let frq_start = document.getElementById('frq_start').value;
   let frq_end = document.getElementById('frq_end').value;
@@ -288,17 +296,12 @@ function save_config() {
   dict_module[id]['threshold'] = threshold;
   dict_module[id]['applied'] = false;
 
-  config(id, frq_start, frq_end, threshold); 
-  close_config();
+  send_config_module(id, frq_start, frq_end, threshold); 
+  close_config_module();
 }
 
-function close_config() {
-  /*
-  document.getElementById('frq_start').value = '400';
-  document.getElementById('frq_end').value = '420';
-  document.getElementById('threshold').value = '5';
-  */
-  document.getElementById('config').style = 'display: none';
+function close_config_module() {
+  document.getElementById('config_module').style = 'display: none';
 }
 
 function pop_error(value) {
