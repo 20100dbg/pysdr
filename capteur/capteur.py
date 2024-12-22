@@ -59,6 +59,12 @@ def send(msg_type, addr, data):
     #print(f"Sending {msg}")
     lora.send(msg)
     
+def save_config():
+    with open('config.json', 'w') as f:
+        json.dump(config, f)
+
+def load_config():
+    pass
 
 signal(SIGINT, handler)
 

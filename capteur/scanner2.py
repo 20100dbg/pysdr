@@ -69,8 +69,8 @@ class scanner:
         frq = self.frq_start
         frq_start_detection = 0
         hop_width = 500 * 1000
-        original_hop_width = hop_width
-        max_hop_detection = 5
+        min_hop_width = 12.5 * 1000
+        hop_direction = 1
 
         while self.running:
 
@@ -81,19 +81,19 @@ class scanner:
             
                 #nouvelle detection
                 if frq_start_detection == 0:
-                    frq -= 200000
+                    frq -= 300000
                     frq_start_detection = self.sdr.center_freq
-                    hop_width = 50000
                     max_pwr = 0
                     max_frq = 0
-                    hop_detection = 0
                 
                 if avg_pwr > max_pwr:
                     max_pwr = avg_pwr
                     max_frq = self.sdr.center_freq
-                    hop_detection += 1
-
-                if hop_detection >= max_hop_detection:
+                
+                if hop_width >= min_hop_width:
+                    hop_width = (hop_width / 2) * hop_direction
+                    hop_direction = hop_direction * -1
+                else:
                     self.callback(max_frq)
                     frq_start_detection = 0
                     hop_width = original_hop_width
@@ -103,7 +103,6 @@ class scanner:
             elif frq_start_detection != 0:
                 #print(f"\nFound activity on {self.pretty_frq(max_frq)} / start {frq_start_detection}")
                 self.callback(max_frq)
-
                 frq_start_detection = 0
                 hop_width = original_hop_width
             
@@ -111,7 +110,6 @@ class scanner:
 
             if self.new_conf:
                 frq = self.frq_start
-                #print("Set up new frq_start / frq_end")
                 self.new_conf = False
 
             if frq > self.frq_end:
