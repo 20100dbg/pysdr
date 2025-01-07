@@ -95,9 +95,9 @@ class scanner:
 
                 if hop_detection >= max_hop_detection:
                     self.callback(max_frq)
-                    frq_start_detection = 0
                     hop_width = original_hop_width
                     frq = frq_start_detection + original_hop_width
+                    frq_start_detection = 0
             
             #fin de detection/recherche
             elif frq_start_detection != 0:
