@@ -1,17 +1,23 @@
 import sys
 from lora import *
 from scanner import *
+
+
+## debug helpers
+
 from signal import signal, SIGINT
-
 def handler(signal_received, frame):
-    global running
     print("\n\nCaught Ctrl+C, stopping...")
-    running = False
-
+    scanner.stop()
+    #lora.stop()
 
 def getmsgkey(msgvalue):
     idx = list(dict_msg.values()).index(msgvalue)
     return list(dict_msg.keys())[idx]
+
+#signal(SIGINT, handler)
+
+##
 
 
 def callback_lora(data):
@@ -37,11 +43,14 @@ def callback_lora(data):
             scanner.set_threshold(new_threshold)
             scanner.set_frq(frq_start, frq_end)
 
-            #print(f"new conf : {frq_start} - {frq_end} / {new_threshold}")
+            print(f"new conf : {frq_start} - {frq_end} / {new_threshold}")
 
             send(dict_msg["CONF_ACK"], local_addr, data[2:7])
 
         elif dict_msg["PING"] == msg_type:
+
+
+            print(f"got PING")
             send(dict_msg["PONG"], local_addr, b'')
 
 
@@ -56,7 +65,7 @@ def send(msg_type, addr, data):
     msg += addr.to_bytes(1, 'big')
     msg += data
 
-    #print(f"Sending {msg}")
+    print(f"Sending {msg}")
     lora.send(msg)
     
 def save_config():
@@ -66,14 +75,14 @@ def save_config():
 def load_config():
     pass
 
-signal(SIGINT, handler)
+
+if len(sys.argv) != 2:
+    print(f"Usage : python {sys.argv[0]} <ID CAPTEUR>")
+    exit(1)
 
 local_addr = int(sys.argv[1])
 dict_msg = {"FRQ": 0, "CONF": 1, "CONF_ACK": 2, "PING": 3, "PONG": 4 }
 
-
-global running
-running = True
 
 lora = lora(channel=18, address=local_addr, callback=callback_lora)
 lora.activate()
@@ -91,14 +100,12 @@ for _ in range(nb_sdr):
     scanners.append(s)
 """
 
-scanner = scanner(frq_start, frq_end, callback_scanner)
-scanner.activate()
+scanner = scanner(frq_start, frq_end, callback_scanner, debug=True)
+scanner.activate(blocking=True)
 
-while running:
-    time.sleep(0.01)
-
-lora.stop()
-scanner.stop()
+if lora.running:
+    lora.stop()
+#scanner.stop()
 
 """
 for s in scanners:

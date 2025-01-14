@@ -3,22 +3,27 @@ from rtlsdr import RtlSdr
 
 class scanner:
 
-    def __init__(self, frq_start, frq_end, callback):
+    def __init__(self, frq_start, frq_end, callback, debug=False):
         self.running = True
-        self.thread = threading.Thread(target=self.scanner)
         self.frq_start = frq_start
         self.frq_end = frq_end
         self.new_conf = False
         self.callback = callback
+        self.debug = debug
 
 
-    def activate(self):
+    def activate(self, blocking=False):
         try:
             self.sdr = RtlSdr()
         except Exception as e:
             return False
 
-        self.thread.start()
+        if blocking:
+            self.thread = None
+            self.scanner()
+        else:
+            self.thread = threading.Thread(target=self.scanner)
+            self.thread.start()
         return True
 
 
@@ -33,7 +38,8 @@ class scanner:
 
     def stop(self):
         self.running = False
-        self.thread.join()
+        if self.thread:
+            self.thread.join()
 
     def arr_abs(self, arr):
         return [abs(x) for x in arr]
@@ -69,40 +75,49 @@ class scanner:
         frq = self.frq_start
         frq_start_detection = 0
         hop_width = 500 * 1000
-        min_hop_width = 12.5 * 1000
-        hop_direction = 1
+        original_hop_width = hop_width
+        max_hop_detection = 5
 
         while self.running:
 
             avg_pwr = self.get_frq_power(self.sdr, frq, nb_samples)
-            #print(f"\rScanning {self.pretty_frq(self.sdr.center_freq)} {avg_pwr}", end='')
+            
+            if self.debug:
+                print(f"\rScanning {self.pretty_frq(self.sdr.center_freq)} {avg_pwr}", end='')
             
             if avg_pwr >= self.threshold:
             
                 #nouvelle detection
                 if frq_start_detection == 0:
-                    frq -= 300000
+                    frq -= 200000
                     frq_start_detection = self.sdr.center_freq
+                    hop_width = 50000
                     max_pwr = 0
                     max_frq = 0
+                    hop_detection = 0
                 
                 if avg_pwr > max_pwr:
                     max_pwr = avg_pwr
                     max_frq = self.sdr.center_freq
-                
-                if hop_width >= min_hop_width:
-                    hop_width = (hop_width / 2) * hop_direction
-                    hop_direction = hop_direction * -1
-                else:
+                    hop_detection += 1
+
+                if hop_detection >= max_hop_detection:
+
+                    if self.debug:
+                        print(f"\nFound activity on {self.pretty_frq(max_frq)} / start {frq_start_detection}")
                     self.callback(max_frq)
-                    frq_start_detection = 0
+                    
                     hop_width = original_hop_width
                     frq = frq_start_detection + original_hop_width
+                    frq_start_detection = 0
             
             #fin de detection/recherche
             elif frq_start_detection != 0:
-                #print(f"\nFound activity on {self.pretty_frq(max_frq)} / start {frq_start_detection}")
+                
+                if self.debug:
+                    print(f"\nFound activity on {self.pretty_frq(max_frq)} / start {frq_start_detection}")
                 self.callback(max_frq)
+
                 frq_start_detection = 0
                 hop_width = original_hop_width
             
@@ -110,6 +125,7 @@ class scanner:
 
             if self.new_conf:
                 frq = self.frq_start
+                #print("Set up new frq_start / frq_end")
                 self.new_conf = False
 
             if frq > self.frq_end:

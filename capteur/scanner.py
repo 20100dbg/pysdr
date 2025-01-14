@@ -1,24 +1,30 @@
 import threading
+import time
 from rtlsdr import RtlSdr
 
 class scanner:
 
-    def __init__(self, frq_start, frq_end, callback):
+    def __init__(self, frq_start, frq_end, callback, debug=False):
         self.running = True
-        self.thread = threading.Thread(target=self.scanner)
         self.frq_start = frq_start
         self.frq_end = frq_end
         self.new_conf = False
         self.callback = callback
+        self.debug = debug
 
 
-    def activate(self):
+    def activate(self, blocking=False):
         try:
             self.sdr = RtlSdr()
         except Exception as e:
             return False
 
-        self.thread.start()
+        if blocking:
+            self.thread = None
+            self.scanner()
+        else:
+            self.thread = threading.Thread(target=self.scanner)
+            self.thread.start()
         return True
 
 
@@ -33,7 +39,8 @@ class scanner:
 
     def stop(self):
         self.running = False
-        self.thread.join()
+        if self.thread:
+            self.thread.join()
 
     def arr_abs(self, arr):
         return [abs(x) for x in arr]
@@ -44,9 +51,9 @@ class scanner:
     def arr_pow(self, arr, p):
         return [x ** p for x in arr]
 
-    def get_frq_power(self, sdr, frq, nb_samples):    
+    def get_frq_power(self, sdr, frq):
         self.sdr.center_freq = frq # Hz
-        x = self.sdr.read_samples(nb_samples)
+        x = self.sdr.read_samples(self.nb_samples)
         return self.arr_mean(self.arr_pow(self.arr_abs(x),2))
 
 
@@ -56,57 +63,71 @@ class scanner:
         return strfrq + 'M'
 
 
+    def scan_zone(self, frq_start, frq_end, hop_width):
+
+        max_frq = 0
+        max_pwr = 0
+
+        frq = frq_start
+        while frq <= frq_end:
+
+            avg_pwr = self.get_frq_power(self.sdr, frq)
+
+            #if self.debug:
+            #    print(f"\rScanning {self.pretty_frq(frq)} {avg_pwr}", end='')
+
+            if avg_pwr > max_pwr:
+                max_frq = frq
+                max_pwr = avg_pwr
+            frq += hop_width
+
+        return (max_frq, max_pwr)
+
+
     def scanner(self):
         x = 0
-        
-        nb_samples = 1024 * 4
+
+        self.frq_start = 400*10**6
+        self.frq_end = 440*10**6
+
+
+        self.nb_samples = 1024 * 4
         self.sdr.bandwith = 12.5e3 #0 = auto
         self.sdr.sample_rate = 2.048e6 # Hz
         self.sdr.freq_correction = 60  # PPM
         self.sdr.gain = 49
 
-        self.threshold = 1
+        self.threshold = 0.8
         frq = self.frq_start
-        frq_start_detection = 0
-        hop_width = 500 * 1000
-        original_hop_width = hop_width
-        max_hop_detection = 5
+        hop_width = 800 * 1000 #meilleur compromis vitesse / précision
+
+        time_start_loop = time.time()
+        time_start_detection = time.time()
 
         while self.running:
 
-            avg_pwr = self.get_frq_power(self.sdr, frq, nb_samples)
-            #print(f"\rScanning {self.pretty_frq(self.sdr.center_freq)} {avg_pwr}", end='')
-            
+            avg_pwr = self.get_frq_power(self.sdr, frq)
+
+            if self.debug:
+                print(f"\rScanning {self.pretty_frq(frq)} {avg_pwr}", end='')
+
             if avg_pwr >= self.threshold:
-            
+
+                time_start_detection = time.time()
+                frq_start_detection = frq
+
                 #nouvelle detection
-                if frq_start_detection == 0:
-                    frq -= 200000
-                    frq_start_detection = self.sdr.center_freq
-                    hop_width = 50000
-                    max_pwr = 0
-                    max_frq = 0
-                    hop_detection = 0
-                
-                if avg_pwr > max_pwr:
-                    max_pwr = avg_pwr
-                    max_frq = self.sdr.center_freq
-                    hop_detection += 1
+                (max_frq, max_pwr) = self.scan_zone(frq - 1_000_000, frq, 200_000)
+                #if self.debug:
+                #    print(f"\nIntermediate : {self.pretty_frq(max_frq)}")
+                (max_frq, max_pwr) = self.scan_zone(max_frq - 100_000, max_frq + 25_000, 25_000)
 
-                if hop_detection >= max_hop_detection:
-                    self.callback(max_frq)
-                    hop_width = original_hop_width
-                    frq = frq_start_detection + original_hop_width
-                    frq_start_detection = 0
-            
-            #fin de detection/recherche
-            elif frq_start_detection != 0:
-                #print(f"\nFound activity on {self.pretty_frq(max_frq)} / start {frq_start_detection}")
-                self.callback(max_frq)
+                if self.debug:
+                    print(f"\nFound activity on {self.pretty_frq(max_frq)} / start {frq_start_detection} (in {time.time() - time_start_detection}s)")
+                #self.callback(max_frq)
 
-                frq_start_detection = 0
-                hop_width = original_hop_width
-            
+                frq += hop_width #distance de sécurité pour éviter une double détection
+
             frq += hop_width
 
             if self.new_conf:
@@ -116,6 +137,8 @@ class scanner:
 
             if frq > self.frq_end:
                 frq = self.frq_start
+                print(f"Time to loop : {time.time() - time_start_loop}")
+                time_start_loop = time.time()
 
         self.sdr.close()
 

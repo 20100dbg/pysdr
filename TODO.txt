@@ -7,15 +7,14 @@ X - msg PING
 X - ne pas reconfigurer le capteur si une des valeurs = 0
 X - afficher le loader
 X - revoir le textarea, prevoir autoscroll
-- gestion de groupes (de capteur/de clés)
 - support de DSD
 - msg INFO : nb clés, config, gps
 - les capteurs enregistrent en local la config
 
 
 Algorithme
-- ajouter une condition d'arrêt pour limiter le temps de recherche
-- recherche dichotomique
+X - ajouter une condition d'arrêt pour limiter le temps de recherche
+X - recherche dichotomique
 
 
 DSD

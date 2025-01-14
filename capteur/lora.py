@@ -20,12 +20,18 @@ class lora:
             time.sleep(0.01)
 
     def send(self, msg):
-        self.mylora.sendraw(msg)
+        self.mylora.send_bytes(msg)
  
 
-    def activate(self):
-        self.mylora = sx126x.sx126x(channel=self.channel,address=self.address,network=0, txPower='22', airDataRate='9.6', packetSize='32')
-        self.thread.start()
+    def activate(self, blocking=False):
+        self.mylora = sx126x.sx126x(channel=self.channel,address=self.address,network=0, tx_power=22, air_data_rate=9.6, sub_packet_size=32)
+
+        if blocking:
+            self.receive()
+        else:
+            self.thread = threading.Thread(target=self.receive)
+            self.thread.start()
+
 
     def stop(self):
         self.running = False

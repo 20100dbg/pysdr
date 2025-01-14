@@ -1,0 +1,20 @@
+notes
+
+nombre de samples
+- joue principalement sur la précision
+- plus de samples = fréquence détectée plus proche de la réalité
+- les relevés sont un peu plus lent avec davantage de précision
+
+bandwith
+- comparaison entre fixe (12.5, 250 et auto)
+- ne semble pas affecter précision et vitesse
+
+sample rate
+- diminuer en dessous de 2.4mhz (max) semble diminuer la précision
+- ne semble pas affecter la vitesse
+
+gain
+- il doit être fixe sinon pas de détection
+- a priori assez haut, donc 49
+
+faire des sauts plus grands augmente la vitesse de scan, mais sortir une fréquence précise est plus difficile
