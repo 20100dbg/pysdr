@@ -54,7 +54,9 @@ class scanner:
     def get_frq_power(self, sdr, frq):
         self.sdr.center_freq = frq # Hz
         x = self.sdr.read_samples(self.nb_samples)
-        return self.arr_mean(self.arr_pow(self.arr_abs(x),2))
+        x = self.arr_mean(self.arr_pow(self.arr_abs(x),2))
+        x = 10*log10(x)
+        return x
 
 
     def pretty_frq(self, frq):
@@ -93,7 +95,8 @@ class scanner:
 
         self.nb_samples = 1024 * 4
         self.sdr.bandwith = 12.5e3 #0 = auto
-        self.sdr.sample_rate = 2.048e6 # Hz
+        #self.sdr.sample_rate = 2.048e6 # Hz
+        self.sdr.sample_rate = 3.2e6 # Hz
         self.sdr.freq_correction = 60  # PPM
         self.sdr.gain = 49
 
