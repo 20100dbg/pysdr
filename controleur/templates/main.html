@@ -18,8 +18,8 @@
   
   <center>
     <table>
-      <tr><th>Frq debut</th><th>Frq fin</th><th>Seuil (0.1-1.5)</th></tr>
-      <tr><td><input type="number" id="frq_start" size="5"></td><td><input type="number" id="frq_end" size="5"></td><td><input type="number" id="threshold" min="0.1" max="1.5" step="0.1" size="2"></td></tr>
+      <tr><th>Frq debut</th><th>Frq fin</th><th>Squelch (-120 - 0)</th></tr>
+      <tr><td><input type="number" id="frq_start" size="5"></td><td><input type="number" id="frq_end" size="5"></td><td><input type="number" id="threshold" min="-120" max="0" step="1" size="2"></td></tr>
       <tr><td><input disabled type="number" id="frq_start1" size="5"></td><td><input disabled type="number" id="frq_end1" size="5"></td><td><input disabled type="number" id="threshold1" min="1" max="10" size="2"></td></tr>
       <tr><td><input disabled type="number" id="frq_start2" size="5"></td><td><input disabled type="number" id="frq_end2" size="5"></td><td><input disabled type="number" id="threshold2" min="1" max="10" size="2"></td></tr>
       <tr><td><input disabled type="number" id="frq_start3" size="5"></td><td><input disabled type="number" id="frq_end3" size="5"></td><td><input disabled type="number" id="threshold3" min="1" max="10" size="2"></td></tr>
@@ -73,6 +73,7 @@ let dict_module = {};
 
   let detections = {{detections}};
   for (var i = 0; i < detections.length; i++) {
+    //module_id, dt, frq
     add_detection(detections[i][0], detections[i][1], detections[i][2]);
   }
 
@@ -122,10 +123,10 @@ function send_nb_module(nb_module) {
   socket.emit("set_nb_module", nb_module);
 }
 
-function send_config_module(id, frq_start, frq_end, threshold) {
+function send_config_module(module_id, frq_start, frq_end, threshold) {
   show_loader();
   threshold = threshold * 10;
-  socket.emit("config", {'id': id, 'frq_start': frq_start, 'frq_end': frq_end, 'threshold': threshold});
+  socket.emit("config", {'module_id': module_id, 'frq_start': frq_start, 'frq_end': frq_end, 'threshold': threshold});
 }
 
 socket.on("connect", () => {
@@ -137,35 +138,35 @@ socket.on("disconnect", () => {
   update_etat(false);
 });
 
-socket.on("got_config_ack", function(id) {
-  dict_module[id]['applied'] = true;
-  pop_error("C" + id + " configuré");
+socket.on("got_config_ack", function(module_id) {
+  dict_module[module_id]['applied'] = true;
+  pop_error("C" + module_id + " configuré");
 });
 
-socket.on("got_pong", function(id) {
-  pop_error("C" + id + " répond");
+socket.on("got_pong", function(module_id) {
+  pop_error("C" + module_id + " répond");
 });
 
 socket.on("got_frq", function(params) {
-  addr = params['addr'];
-  gdh = params['gdh'];
+  module_id = params['module_id'];
+  current_dt = params['current_dt'];
   frq = params['frq'];
 
-  add_detection(addr, gdh, frq);
-  pop_error("C" + addr + " - " + pretty_frq(frq));
+  add_detection(module_id, current_dt, frq);
+  pop_error("C" + module_id + " - " + pretty_frq(frq));
 });
 
 
 // interface
 
-function add_detection(id_module, gdh, frq) {
+function add_detection(module_id, current_dt, frq) {
   let log_detections = document.getElementById('log_detections');
-  //log_detections.value += pretty_gdh(gdh) + " - C" + id_module + " - " + pretty_frq(frq) + "\n";
+  //log_detections.value += pretty_gdh(current_dt) + " - C" + module_id + " - " + pretty_frq(frq) + "\n";
   //log_detections.scrollTop = log_detections.scrollHeight;
   
 
   const tpl = document.createElement('template');
-  log_row = pretty_gdh(gdh) + " - C" + id_module + " - " + pretty_frq(frq);
+  log_row = pretty_gdh(current_dt) + " - C" + module_id + " - " + pretty_frq(frq);
   tpl.innerHTML = '<span class="log_row">'+ log_row +'</span>'
 
   log_detections.appendChild(tpl.content.firstChild);
@@ -274,29 +275,29 @@ function get_tpl(id)
 
 //config
 
-function show_config_module(id) {
-  document.getElementById('id').value = id;
+function show_config_module(module_id) {
+  document.getElementById('module_id').value = module_id;
   document.getElementById('config_module').style = 'display: block';
 
-  document.getElementById('frq_start').value = dict_module[id]['frq_start'];
-  document.getElementById('frq_end').value = dict_module[id]['frq_end'];
-  document.getElementById('threshold').value = dict_module[id]['threshold'];
-  document.getElementById('applied').checked = dict_module[id]['applied'];
+  document.getElementById('frq_start').value = dict_module[module_id]['frq_start'];
+  document.getElementById('frq_end').value = dict_module[module_id]['frq_end'];
+  document.getElementById('threshold').value = dict_module[module_id]['threshold'];
+  document.getElementById('applied').checked = dict_module[module_id]['applied'];
   
 }
 
 function save_config_module() {
-  let id = document.getElementById('id').value;
+  let module_id = document.getElementById('module_id').value;
   let frq_start = document.getElementById('frq_start').value;
   let frq_end = document.getElementById('frq_end').value;
   let threshold = document.getElementById('threshold').value;
 
-  dict_module[id]['frq_start'] = frq_start;
-  dict_module[id]['frq_end'] = frq_end;
-  dict_module[id]['threshold'] = threshold;
-  dict_module[id]['applied'] = false;
+  dict_module[module_id]['frq_start'] = frq_start;
+  dict_module[module_id]['frq_end'] = frq_end;
+  dict_module[module_id]['threshold'] = threshold;
+  dict_module[module_id]['applied'] = false;
 
-  send_config_module(id, frq_start, frq_end, threshold); 
+  send_config_module(module_id, frq_start, frq_end, threshold); 
   close_config_module();
 }
 

@@ -1,32 +1,19 @@
 Général
-X - support multi-clé SDR
-X - détection auto du nombre de clés
-X - RTC, ou script date + hwclock
-X - le client définit le nombre de modules
-X - msg PING
-X - ne pas reconfigurer le capteur si une des valeurs = 0
-X - afficher le loader
-X - revoir le textarea, prevoir autoscroll
 - support de DSD
 - msg INFO : nb clés, config, gps
 - les capteurs enregistrent en local la config
 
 
-Algorithme
-X - ajouter une condition d'arrêt pour limiter le temps de recherche
-X - recherche dichotomique
+
+sur le controller, watcher :
+- envoi d'un message HELLO
+-- le capteur répond avec coordonnées GPS, nb clés
+-
+
+- dashboard controller
+-- carto
+-- historique
+- bdd sqlite
+- controle des messages doublons 
 
 
-DSD
-- extraction de :
--- protocole
--- chiffrement
--- RID
--- TG
--- CC
-
-BDD
-X - config des capteurs
-X - liste des evenements
-X - dump CSV
-- position GPS

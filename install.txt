@@ -1,28 +1,4 @@
 
-# 1 - Installation de l'environnement
-
-# Creation du dossier
-mkdir capteur
-cd capteur
-python -m venv .venv
-source .venv/bin/activate
-
-
-# 2 - Installation des bibliothèques
-
-# Installer pyserial
-# Installer rpi.gpio
-
-sudo dpkg -i librtlsdr0_0.6.0-4_arm64.deb
-
-tar xvf pyrtlsdr-0.3.0.tar.gz
-cd pyrtlsdr-0.3.0
-python setup.py install
-
-
-# rtl-sdr_0.6.0-4_arm64 est facultatif mais contient quelques outils utiles pour manipuler les clés RTL SDR
-
-
 # 3 - Copier le code
 
 chmod +x start.sh
@@ -56,10 +32,3 @@ WantedBy=multi-user.target
 
 sudo systemctl enable capteur.service
 
-
-
-# notes
-
-sudo apt install rtl_sdr
-pip install pyrtlsdr
-pip install pyrtlsdr[lib]

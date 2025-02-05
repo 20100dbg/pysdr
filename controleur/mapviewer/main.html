@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<head>
+  <link rel="stylesheet" href="css/carto.css" />
+  <link rel="stylesheet" href="css/slider.css" />
+  <link rel="stylesheet" href="css/leaflet.css" />
+  <link rel="stylesheet" href="css/leaflet-geoman.css" />
+  <link rel="stylesheet" href="css/leaflet-minimap.css" />
+  <link rel="stylesheet" href="css/leaflet-coordinates.css" />
+
+	<meta charset="utf-8">
+	<title>Carto</title>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="containerslider">
+  <div class="container_tooltip">
+    <span id="fromSliderTooltip" class="tooltip from"></span>
+    <span id="toSliderTooltip" class="tooltip to"></span>
+  </div>
+  <div class="sliders_control">
+    <input id="fromSlider" type="range" value="0" min="0" max="100" />
+    <input id="toSlider" type="range" value="100" min="0" max="100" style="margin-top: 1px;" />
+  </div>
+  <canvas id="bandeau" width="600" height="20" style="border:1px solid #eeeeee;"></canvas>
+</div>
+
+
+</script>
+  <script src="js/leaflet.js"></script>
+  <script src="js/leaflet-heatmap.js"></script>
+  <script src="js/leaflet-coordinates.js"></script>
+  <script src="js/leaflet-minimap.js"></script>
+  <script src="js/leaflet-geoman.min.js"></script>
+  <script src="js/leaflet-kml.js"></script>
+  <script src="js/slider.js"></script>
+  <script src="js/bandeau.js"></script>
+  <script src="js/carto.js"></script>
+  <script src="js/carto_init.js"></script>
+  <script src="js/carto_import.js"></script>
+  <script src="js/carto_dessin.js"></script>
+</body>
+</html>
