@@ -17,3 +17,7 @@ sur le controller, watcher :
 - controle des messages doublons 
 
 
+- récupérer le niveau de batterie
+- message AUDIT/STATUS : remonter le niveau de batterie, nb/état clés SDR, pos GPS
+- configuration channel
+- 
