@@ -57,7 +57,7 @@ std::vector<T> read_inputfile(std::istream* stream) {
   }
   return values;
 }
-
+/*
 AuxData::AuxData(const Params& params) {
   std::istream* stream;
   std::ifstream fs;
@@ -154,16 +154,18 @@ AuxData::AuxData(const Params& params) {
     }
   }
 }
+*/
+
 
 Plan::Plan(Params& params_, int actual_samplerate_) :
   actual_samplerate(actual_samplerate_), params(params_)
 {
   // Calculate the number of repeats according to the true sample rate.
+  /*
   if (params.integration_time_isSet) {
     params.repeats = ceil(actual_samplerate * params.integration_time / params.N);
   }
-
-  params.repeats = 32;
+  */
 
   // Adjust buffer size
   if (!params.buf_length_isSet) {
@@ -200,6 +202,7 @@ Plan::Plan(Params& params_, int actual_samplerate_) :
   }
 }
 
+/*
 void Plan::print() const {
     std::cerr << "Number of bins: " << params.N << std::endl;
     std::cerr << "Total number of (complex) samples to collect: " << (int64_t)params.N*params.repeats << std::endl;
@@ -209,15 +212,16 @@ void Plan::print() const {
     if (params.strict_time)
       std::cerr << "Acquisition will unconditionally terminate after " << params.integration_time << " seconds." << std::endl;
 }
+*/
 
 
 Acquisition::Acquisition(const Params& params_,
-                         AuxData& aux_,
+                         /*AuxData& aux_,*/
                          Rtlsdr& rtldev_,
                          Datastore& data_,
                          int actual_samplerate_,
                          int64_t freq_) :
-  params(params_), aux(aux_), rtldev(rtldev_), data(data_),
+  params(params_), /*aux(aux_),*/ rtldev(rtldev_), data(data_),
   actual_samplerate(actual_samplerate_), freq(freq_)
 { }
 
@@ -268,8 +272,10 @@ void Acquisition::run() {
   //if( (params.outcnt == 0 && params.talkless) || (params.talkless==false) ) std::cerr << "Acquisition started at " << startAcqTimestamp << std::endl;
 
   // Calculate the stop time. This will only be effective if --strict-time was given.
+  /*
   using steady_clock = std::chrono::steady_clock;
   steady_clock::time_point stopTime = steady_clock::now() + std::chrono::milliseconds(int64_t(params.integration_time*1000));
+  */
 
   std::unique_lock<std::mutex>
   status_lock(data.status_mutex, std::defer_lock);
@@ -326,8 +332,10 @@ void Acquisition::run() {
       status_lock.unlock();
     }
 
+    /*
     if (params.strict_time && (steady_clock::now() >= stopTime))
       break;
+    */
 
     // See if we have been instructed to conclude this measurement immediately.
     if (interrupts && checkInterrupt(InterruptState::FinishNow))
@@ -335,11 +343,13 @@ void Acquisition::run() {
   }
 
   // Record the end-of-acquisition timestamp.
+  /*
   endAcqTimestamp = currentDateTime();
   time(&scanEnd);
   lastAcqTimestamp = currentDateTime();
   sumScanDur = sumScanDur + difftime(scanEnd, scanBeg);
   avgScanDur = sumScanDur / metaRows;
+  */
 
   //if( (params.outcnt == 0 && params.talkless) || (params.talkless==false) ) std::cerr << "Acquisition done at " << endAcqTimestamp << std::endl;
 
@@ -350,6 +360,7 @@ void Acquisition::run() {
   t.join();
 }
 
+/*
 void Acquisition::print_summary() const {
   std::cerr << "Actual number of (complex) samples collected: "
     << (int64_t)params.N * data.repeats_done << std::endl;
@@ -359,6 +370,7 @@ void Acquisition::print_summary() const {
   std::cerr << "Effective integration time: " <<
     (double)params.N * data.repeats_done / actual_samplerate << " seconds" << std::endl;
 }
+*/
 
 void Acquisition::write_data() const {
 
@@ -381,24 +393,26 @@ void Acquisition::write_data() const {
   data.pwr[params.N/2] = (data.pwr[params.N/2 - 1] + data.pwr[params.N/2+1]) / 2;
 
   // Calculate the precision needed for displaying the frequency.
-  const int extraDigitsFreq = 2;
-  const int significantPlacesFreq = ceil(floor(log10(tuned_freq)) - log10(actual_samplerate/params.N) + 1 + extraDigitsFreq);
-  const int significantPlacesPwr = 6;
+  //const int extraDigitsFreq = 2;
+  //const int significantPlacesFreq = ceil(floor(log10(tuned_freq)) - log10(actual_samplerate/params.N) + 1 + extraDigitsFreq);
+  //const int significantPlacesPwr = 6;
 
+/*
   if( params.matrixMode ) {
     // we'll APPEND a new scan "row" of power values
     binfile.open(params.bin_file, std::ios::out | std::ios::app | std::ios::binary);
   }
+*/
 
   for (int i = 0; i < params.N; i++) {
     freq = tuned_freq + (i - params.N/2.0) * actual_samplerate / params.N;
     if( params.linear ) {
-      pwrdb = (data.pwr[i] / data.repeats_done / params.N / actual_samplerate)
-                     - (params.baseline ? aux.baseline_values[i] : 0);
+      pwrdb = (data.pwr[i] / data.repeats_done / params.N / actual_samplerate);
+                     //- (params.baseline ? aux.baseline_values[i] : 0);
     }
     else {
-      pwrdb = 10*log10(data.pwr[i] / data.repeats_done / params.N / actual_samplerate)
-                     - (params.baseline ? aux.baseline_values[i] : 0);
+      pwrdb = 10*log10(data.pwr[i] / data.repeats_done / params.N / actual_samplerate);
+                     //- (params.baseline ? aux.baseline_values[i] : 0);
     }
     if( params.matrixMode ) {
       // we are accumulating a double, so 8 bytes, removed the sizeof()
@@ -421,7 +435,9 @@ void Acquisition::write_data() const {
                 << std::endl;
       */
 
-      std::cout << "\r PWR " << pwrdb << " on " << freq / 1000000 << std::flush;
+      //std::cout << "PWR " << pwrdb << " on " << freq / 1000000 << std::flush;
+
+      //params.threshold
 
       if (pwrdb > -10) {
         std::cout << "activity on " << freq / 1000000 << std::endl;

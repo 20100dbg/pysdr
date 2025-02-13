@@ -50,8 +50,8 @@ int cntTimeStamps;
 int main(int argc, char **argv)
 {
   bool do_exit = false;
-  time_t exit_time = 0;
-  bool freqsMetaNeeded = true;
+  //time_t exit_time = 0;
+  //bool freqsMetaNeeded = true;
 
   ReturnValue final_retval = ReturnValue::Success;
 
@@ -59,13 +59,14 @@ int main(int argc, char **argv)
     // Parse command line arguments.
     Params params(argc, argv);
     // Read auxiliary data for window function and baseline correction.
-    AuxData auxData(params);
+    //AuxData auxData(params);
 
     // Set up RTL-SDR device.
     Rtlsdr rtldev(params.dev_index);
 
     // endless will take precedence on session duration time
     // so i'll force session_duration_isSet = false if endless has been specified
+    /*
     if(params.endless) params.session_duration_isSet = false;
     if(params.session_duration_isSet)
     {
@@ -73,12 +74,13 @@ int main(int argc, char **argv)
       exit_time = (int) params.session_duration;
       std::cerr << "Scan session duration: " << exit_time << " seconds" << std::endl;
     }
+    */
 
     // Print the available gains and select the one nearest to the requested gain.
-    rtldev.print_gains();
+    //rtldev.print_gains();
     int gain = rtldev.nearest_gain(params.gain);
-    std::cerr << "Selected nearest available gain: " << gain
-              << " (" << 0.1*gain << " dB)" << std::endl;
+    //std::cerr << "Selected nearest available gain: " << gain
+    //          << " (" << 0.1*gain << " dB)" << std::endl;
     rtldev.set_gain(gain);
 
     // Temporarily set the frequency to params.cfreq, just so that the device does not
@@ -93,29 +95,30 @@ int main(int argc, char **argv)
     // Set frequency correction
     if (params.ppm_error != 0) {
       rtldev.set_freq_correction(params.ppm_error);
-      std::cerr << "PPM error set to: " << params.ppm_error << std::endl;
+      //std::cerr << "PPM error set to: " << params.ppm_error << std::endl;
     }
 
     // Set sample rate
     rtldev.set_sample_rate(params.sample_rate);
     int actual_samplerate = rtldev.sample_rate();
-    std::cerr << "Actual sample rate: " << actual_samplerate << " Hz" << std::endl;
+    //std::cerr << "Actual sample rate: " << actual_samplerate << " Hz" << std::endl;
 
     // Create a plan of the operation. This will calculate the number of repeats,
     // adjust the buffer size for optimal performance and create a list of frequency
     // hops.
     Plan plan(params, actual_samplerate);
     // Print info on capture time and associated specifics.
-    plan.print();
+    //plan.print();
 
     //Begin the work: prepare data buffers
-    Datastore data(params, auxData.window_values);
+    Datastore data(params); //, auxData.window_values);
 
-    std::cout << "finished datastore" << std::endl;
+    //std::cout << "finished datastore" << std::endl;
 
     // Install a signal handler for detecting Ctrl+C.
     set_CtrlC_handler(true);
 
+    /*
     if(params.session_duration_isSet) {
       // calculate at which time we have to stop looping
       exit_time = time(NULL) + exit_time;
@@ -128,9 +131,13 @@ int main(int argc, char **argv)
       binfile.open(params.bin_file, std::ios::out | std::ios::trunc | std::ios::binary);
       binfile.close();
     }
+    */
 
 
     params.endless = true;
+    params.repeats = 64;
+    //params.threshold = -10;
+
 
 
     params.finalfreq = plan.freqs_to_tune.back();
@@ -138,7 +145,7 @@ int main(int argc, char **argv)
     do {
       for (auto iter = plan.freqs_to_tune.begin(); iter != plan.freqs_to_tune.end();) {
         // Begin a new data acquisition.
-        Acquisition acquisition(params, auxData, rtldev, data, actual_samplerate, *iter);
+        Acquisition acquisition(params, /*auxData, */ rtldev, data, actual_samplerate, *iter);
         try {
           // Read the required amount of data and process it.
           acquisition.run();
@@ -184,8 +191,9 @@ int main(int argc, char **argv)
       }
 
       // if requested, avoid repeating all the printouts, just do that one time:
-      if( (params.outcnt == 0 && params.talkless) ) params.outcnt++;
+      //if( (params.outcnt == 0 && params.talkless) ) params.outcnt++;
 
+      /*
       if(params.session_duration_isSet) {
         // here we manage session duration in seconds:
         if (time(NULL) >= exit_time) {
@@ -202,18 +210,22 @@ int main(int argc, char **argv)
         // (one was already output as a terminator for the last data set).
         //std::cout << std::endl;
       }
+      */
 
       if(params.endless) do_exit = false;   // exactly ! will force to never exit
 
+      /*
       if( !params.session_duration_isSet && !params.endless ) {
         do_exit = true; // not an endless, no session duration, so we finish after first run
       }
+      */
 
       // unless you hit ctrl-c :
       if(checkInterrupt(InterruptState::FinishPass)) do_exit = true;
 
     } while ( !do_exit );
 
+    /*
     if(params.matrixMode) {
       metafile.open(params.meta_file, std::ios::out | std::ios::trunc );
       metafile << metaCols << " # frequency bins (columns)" << std::endl;
@@ -233,6 +245,7 @@ int main(int argc, char **argv)
       // No valid frequencies left in the list. This is certainly not OK.
       throw RPFexception("No valid frequencies left.", ReturnValue::AcquisitionError);
     }
+    */
   }
   catch (RPFexception &exception) {
     std::cerr << exception.what() << std::endl;

@@ -13,11 +13,14 @@ def pretty_frq(frq):
     strfrq = strfrq.ljust(7, '0')
     return strfrq + 'M'
 
+
 def int_to_bytes(x, bytes_count=1):
     return x.to_bytes(bytes_count, 'big')
 
+
 def bytes_to_int(b):
     return int.from_bytes(b)
+
 
 def build_key_history(msg):
     """ Create a dictionnary key based on header data """
@@ -25,12 +28,14 @@ def build_key_history(msg):
     (msg_type, msg_id, msg_from) = extract_header(msg)
     return str(msg_from) + '-' + str(msg_id)
 
+
 def extract_header(data):
     """ Extract header fields from message """
     
-    return (data[0], #msg_type
-            bytes_to_int(data[1:2]), #msg_id
+    return (data[0],                  #msg_type
+            bytes_to_int(data[1:2]),  #msg_id
             bytes_to_int(data[2:3])), #msg_from
+
 
 def build_message(msg_type, msg_id, msg_from, data=b''):
     """ Create a byte array with specified header data """

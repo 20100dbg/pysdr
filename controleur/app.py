@@ -39,16 +39,16 @@ def main():
 
 @app.route("/download")
 def download():
-    """ Download data as CSV file. Deprecated ? """
+    """ Download data as CSV file """
 
     cursor.execute("SELECT module_id, dt, frq FROM detection")
     rows = cursor.fetchall()
     csv = 'module;gdh;frq\n'
 
     for row in rows:
-        current_dt = datetime.fromtimestamp(row[1])
+        dt = datetime.fromtimestamp(row[1])
         frq = pretty_frq(row[2])
-        csv += f'{row[0]};{current_dt};{frq}\n'
+        csv += f'{row[0]};{dt};{frq}\n'
 
     current_dt = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
@@ -71,7 +71,9 @@ def config(params):
     current_dt = get_time()
     
     #update DB
-    cursor.execute(f'UPDATE module SET frq_start={frq_start}, frq_end={frq_end}, threshold={threshold}, last_config={current_dt}, config_applied=false WHERE id={module_id}')
+    cursor.execute(f"""UPDATE module SET frq_start='{frq_start}', frq_end='{frq_end}', \
+                        threshold='{threshold}', last_config='{current_dt}', config_applied=false 
+                        WHERE id={module_id}""")
     db.commit()
 
     #Send config to module via LoRa
@@ -95,16 +97,17 @@ def set_time(ts):
 @socketio.on('set_nb_module')
 def set_nb_module(nb):
     """ At startup and manually, client defines how many modules are used. """
-    """ We assume for X modules, modules are always identified by ID 1-X """
+    """ We assume for X modules, modules are always identified by ID 1,2,3...X """
 
     global nb_module
     nb_module = nb
 
     cursor.execute(f'DELETE FROM module')
     db.commit()
-
-    data = [(module_id, 0, 0, 400, 420, -20) for module_id in range(1,nb_module+1)]
-    cursor.executemany("INSERT INTO module VALUES (?, ?, ?, ?, ?, ?, True)", data)
+    
+    #id frq_start frq_end threshold latitude longitude last_config last_ping config_applied
+    data = [(module_id, 400, 420, 0, 0, 0, 0, True) for module_id in range(1, nb_module+1)]
+    cursor.executemany("INSERT INTO module VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data)
     db.commit()
 
 
@@ -196,11 +199,15 @@ with open('script.sql', 'r') as f:
 global nb_module
 nb_module = 0
 channel = 18
+air_data_rate = 0.3
+local_address = 0
+
 time_setup = False
 local_msg_id = 0
 
 global lora
-lora = sx126x.sx126x(channel=channel,address=0,network=0, tx_power=22, air_data_rate=9.6, sub_packet_size=32)
+lora = sx126x.sx126x(channel=channel,address=local_address,network=0, tx_power=22, 
+                    air_data_rate=air_data_rate, sub_packet_size=32)
 
 t_receive = threading.Thread(target=callback_lora)
 t_receive.start()

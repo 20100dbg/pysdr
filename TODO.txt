@@ -1,23 +1,24 @@
-Général
-- support de DSD
-- msg INFO : nb clés, config, gps
-- les capteurs enregistrent en local la config
+
+- controle des messages doublons 
+- configuration channel
 
 
+type de messages
+- CONF_SCAN : configurer frq_start / frq_end / threshold
+- CONF_LORA : configurer channel, air_data_rate ?
+- message AUDIT/STATUS : remonter le niveau de batterie, nb/état clés SDR, pos GPS
 
-sur le controller, watcher :
-- envoi d'un message HELLO
--- le capteur répond avec coordonnées GPS, nb clés
--
 
-- dashboard controller
+capteur
+- arrondir la frq
+- ne pas envoyer de doublons (vérifier l'écart frq + temps entre deux détections)
+- réaction si émission permanente ; cooldown entre deux émissions d'alerte ?
+- enregistrer la config en JSON ?
+
+
+dashboard controller
 -- carto
 -- historique
-- bdd sqlite
-- controle des messages doublons 
 
-
+- support de DSD
 - récupérer le niveau de batterie
-- message AUDIT/STATUS : remonter le niveau de batterie, nb/état clés SDR, pos GPS
-- configuration channel
-- 

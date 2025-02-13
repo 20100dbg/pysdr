@@ -20,9 +20,9 @@
 #include <iostream>
 #include "datastore.h"
 
-Datastore::Datastore(const Params& params_, std::vector<float>& window_values_) :
+Datastore::Datastore(const Params& params_) : //, std::vector<float>& window_values_) :
   params(params_), queue_histogram(params.buffers+1, 0),
-  window_values(window_values_), pwr(params.N)
+  /*window_values(window_values_), */ pwr(params.N)
 {
   for (int i = 0; i < params.buffers; i++)
     empty_buffers.push_back(new Buffer(params.buf_length));
@@ -73,8 +73,10 @@ void Datastore::fftThread()
         const float multiplier = (fft_pointer % 2 == 0 ? 1 : -1);
         complex bfr_val(buffer[buffer_pointer], buffer[buffer_pointer+1]);
         inbuf[fft_pointer] = (bfr_val - complex(127.0, 127.0)) * multiplier;
+        /*
         if (params.window)
           inbuf[fft_pointer] *= window_values[fft_pointer];
+        */
         buffer_pointer += 2;
         fft_pointer++;
       }

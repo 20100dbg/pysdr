@@ -14,15 +14,27 @@
 <div class="alert" role="alert" id="alert"></div>
 
 <div class="config" id="config_module">
-  Capteur <input type="number" id="id" size="2"><br><br>
+  Capteur <input type="number" id="module_id" size="2"><br><br>
   
   <center>
     <table>
       <tr><th>Frq debut</th><th>Frq fin</th><th>Squelch (-120 - 0)</th></tr>
-      <tr><td><input type="number" id="frq_start" size="5"></td><td><input type="number" id="frq_end" size="5"></td><td><input type="number" id="threshold" min="-120" max="0" step="1" size="2"></td></tr>
-      <tr><td><input disabled type="number" id="frq_start1" size="5"></td><td><input disabled type="number" id="frq_end1" size="5"></td><td><input disabled type="number" id="threshold1" min="1" max="10" size="2"></td></tr>
-      <tr><td><input disabled type="number" id="frq_start2" size="5"></td><td><input disabled type="number" id="frq_end2" size="5"></td><td><input disabled type="number" id="threshold2" min="1" max="10" size="2"></td></tr>
-      <tr><td><input disabled type="number" id="frq_start3" size="5"></td><td><input disabled type="number" id="frq_end3" size="5"></td><td><input disabled type="number" id="threshold3" min="1" max="10" size="2"></td></tr>
+      <tr><td><input type="number" id="frq_start" size="5"></td>
+          <td><input type="number" id="frq_end" size="5"></td>
+          <td><input type="number" id="threshold" min="-120" max="0" step="1" size="2"></td>
+      </tr>
+      <tr><td><input disabled type="number" id="frq_start1" size="5"></td>
+          <td><input disabled type="number" id="frq_end1" size="5"></td>
+          <td><input disabled type="number" id="threshold1" min="1" max="10" size="2"></td>
+      </tr>
+      <tr><td><input disabled type="number" id="frq_start2" size="5"></td>
+          <td><input disabled type="number" id="frq_end2" size="5"></td>
+          <td><input disabled type="number" id="threshold2" min="1" max="10" size="2"></td>
+      </tr>
+      <tr><td><input disabled type="number" id="frq_start3" size="5"></td>
+          <td><input disabled type="number" id="frq_end3" size="5"></td>
+          <td><input disabled type="number" id="threshold3" min="1" max="10" size="2"></td>
+      </tr>
     </table>
   </center>
   Configuration appliquée : <input disabled type="checkbox" id="applied"><br><br>
@@ -45,7 +57,6 @@
 <div class="container" id="container">
 
   <div id="tab_detections">
-    <!--<textarea id="log_detections" rows="30" cols="40"></textarea>-->
     <div id="log_detections" class="log_detections"></div>
   </div>
 
