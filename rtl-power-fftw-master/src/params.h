@@ -30,6 +30,7 @@ class Params {
 public:
   Params(int argc, char **argv);
 
+  int threshold = -10;
   int N = 512;
   int dev_index = 0;
   int gain = 372;

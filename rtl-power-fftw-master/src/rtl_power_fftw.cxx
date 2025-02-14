@@ -58,6 +58,12 @@ int main(int argc, char **argv)
   try {
     // Parse command line arguments.
     Params params(argc, argv);
+
+    params.endless = true;
+    params.repeats = 64;
+    //params.threshold = -10;
+
+
     // Read auxiliary data for window function and baseline correction.
     //AuxData auxData(params);
 
@@ -79,8 +85,7 @@ int main(int argc, char **argv)
     // Print the available gains and select the one nearest to the requested gain.
     //rtldev.print_gains();
     int gain = rtldev.nearest_gain(params.gain);
-    //std::cerr << "Selected nearest available gain: " << gain
-    //          << " (" << 0.1*gain << " dB)" << std::endl;
+    //std::cerr << "gain: " << gain << " (" << 0.1*gain << " dB)" << std::endl;
     rtldev.set_gain(gain);
 
     // Temporarily set the frequency to params.cfreq, just so that the device does not
@@ -133,12 +138,7 @@ int main(int argc, char **argv)
     }
     */
 
-
-    params.endless = true;
-    params.repeats = 64;
-    //params.threshold = -10;
-
-
+    std::cout << "Start scanning..." << std::endl;
 
     params.finalfreq = plan.freqs_to_tune.back();
     //Read from device and do FFT
@@ -224,6 +224,8 @@ int main(int argc, char **argv)
       if(checkInterrupt(InterruptState::FinishPass)) do_exit = true;
 
     } while ( !do_exit );
+
+    std::cout << "Ended scan" << std::endl;
 
     /*
     if(params.matrixMode) {

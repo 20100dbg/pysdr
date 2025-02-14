@@ -101,6 +101,7 @@ void ensure_positive_arg(std::list<TCLAP::ValueArg<T>*> list) {
 Params::Params(int argc, char** argv) {
   try {
     TCLAP::CmdLine cmd("Obtain power spectrum from RTL device using FFTW library.", ' ', "1.0-beta2");
+    /*
     TCLAP::ValueArg<int> arg_buffers("","buffers","Number of read buffers (don't touch unless running out of memory).",false,buffers,"buffers");
     cmd.add( arg_buffers );
     TCLAP::ValueArg<std::string> arg_window("w","window","Use window function, from file or stdin.",false,"","file|-");
@@ -111,57 +112,60 @@ Params::Params(int argc, char** argv) {
     cmd.add( arg_strict_time );
     TCLAP::ValueArg<int> arg_bufferlen("s","buffer-size","Size of read buffers (leave it unless you know what you are doing).", false, buf_length, "bytes");
     cmd.add( arg_bufferlen );
-    TCLAP::ValueArg<int> arg_rate("r","rate","Sample rate of the receiver.",false,sample_rate,"samples/s");
-    cmd.add( arg_rate );
     TCLAP::SwitchArg arg_quiet("q","quiet","Limit verbosity.", talkless);
     cmd.add( arg_quiet );
-    TCLAP::ValueArg<int> arg_ppm("p","ppm","Set custom ppm error in RTL-SDR device.", false, ppm_error, "ppm");
-    cmd.add( arg_ppm );
     TCLAP::ValueArg<double> arg_min_overlap("o","overlap","Define lower boundary for overlap when frequency hopping (otherwise meaningless).",false, min_overlap, "percent");
     cmd.add( arg_min_overlap );
     TCLAP::ValueArg<std::string> arg_matrixMode("m","matrix","Will output data in binary matrix format plus separate metadata text file",false,"","filename (without extension)");
     cmd.add( arg_matrixMode );
-    TCLAP::ValueArg<int64_t> arg_repeats("n","repeats","Number of scans for averaging (incompatible with -t).",false,repeats,"repeats");
-    cmd.add( arg_repeats );
     TCLAP::SwitchArg arg_linear("l","linear","Calculate linear power values instead of logarithmic.", linear);
     cmd.add( arg_linear );
-    TCLAP::ValueArg<int> arg_gain("g","gain","Receiver gain.",false, gain, "1/10th of dB");
-    cmd.add( arg_gain );
-    TCLAP::ValueArg<std::string> arg_freq("f","freq","Center frequency of the receiver or frequency range to scan.",false,"","Hz | Hz:Hz");
-    cmd.add( arg_freq );
     TCLAP::ValueArg<std::string> arg_session_duration("e","elapsed","Scan session duration.",false,"","seconds");
     cmd.add( arg_session_duration );
-    TCLAP::ValueArg<int> arg_index("d","device","RTL-SDR device index.",false,dev_index,"device index");
-    cmd.add( arg_index );
-    TCLAP::SwitchArg arg_continue("c","continue","Repeat the same measurement endlessly.", endless);
-    cmd.add( arg_continue );
-    TCLAP::ValueArg<int> arg_bins("b","bins","Number of bins in FFT spectrum (must be even number)",false,N,"bins in FFT spectrum");
-    cmd.add( arg_bins );
     TCLAP::ValueArg<std::string> arg_baseline("B","baseline","Subtract baseline, read baseline data from file or stdin.",false,"","file|-");
     cmd.add( arg_baseline );
+    TCLAP::SwitchArg arg_continue("c","continue","Repeat the same measurement endlessly.", endless);
+    cmd.add( arg_continue );
+    */
+    TCLAP::ValueArg<int> arg_rate("r","rate","Sample rate of the receiver.",false,sample_rate,"samples/s");
+    cmd.add( arg_rate );
+    TCLAP::ValueArg<int> arg_ppm("p","ppm","Set custom ppm error in RTL-SDR device.", false, ppm_error, "ppm");
+    cmd.add( arg_ppm );
+    TCLAP::ValueArg<int64_t> arg_repeats("n","repeats","Number of scans for averaging (incompatible with -t).",false,repeats,"repeats");
+    cmd.add( arg_repeats );
+    TCLAP::ValueArg<float> arg_gain("g","gain","Receiver gain.",false, gain, "37.2, 49.6");
+    cmd.add( arg_gain );
+    TCLAP::ValueArg<int> arg_threshold("t","threshold","Threshold trigger",false, threshold, "dbm");
+    cmd.add( arg_threshold );
+    TCLAP::ValueArg<std::string> arg_freq("f","freq","Center frequency of the receiver or frequency range to scan.",false,"","Hz | Hz:Hz");
+    cmd.add( arg_freq );
+    TCLAP::ValueArg<int> arg_index("d","device","RTL-SDR device index.",false,dev_index,"device index");
+    cmd.add( arg_index );
+    TCLAP::ValueArg<int> arg_bins("b","bins","Number of bins in FFT spectrum (must be even number)",false,N,"bins in FFT spectrum");
+    cmd.add( arg_bins );
 
     cmd.parse(argc, argv);
 
     // Ain't this C++11 f**** magic? Watch this:
-    ensure_positive_arg<int>({&arg_bins, &arg_rate, &arg_gain, &arg_index, &arg_buffers, &arg_bufferlen});
+    ensure_positive_arg<int>({&arg_bins, &arg_rate, &arg_index});
     ensure_positive_arg<int64_t>({&arg_repeats});
 
     dev_index = arg_index.getValue();
     N = arg_bins.getValue();
-    //Number of bins should be even, to allow us a neat trick to get fftw output properly aligned.
-    if (N % 2 != 0) {
-      N++;
-      std::cerr << "Number of bins should be even, changing to " << N << "." << std::endl;
-    }
-    linear = arg_linear.getValue();
-    gain = arg_gain.getValue();
+    if (N % 2 != 0) N++;
+
+    gain = arg_gain.getValue() * 10;
     sample_rate = arg_rate.getValue();
+    threshold = arg_threshold.getValue();
+    /*
     buffers = arg_buffers.getValue();
+    linear = arg_linear.getValue();
     buf_length = arg_bufferlen.getValue();
     endless = arg_continue.getValue();
     talkless = arg_quiet.getValue();
     strict_time = arg_strict_time.getValue();
     min_overlap = arg_min_overlap.getValue();
+    */
     //clipped_output_isSet = arg_clipped.getValue();
 
     // Due to USB specifics, buffer length for reading rtl_sdr device
@@ -173,6 +177,7 @@ Params::Params(int argc, char** argv) {
       std::cerr << "Buffer length should be multiple of " << base_buf
                 << ", changing to " << buf_length << "." << std::endl;
     }
+
     ppm_error = arg_ppm.getValue();
     if (arg_freq.isSet()) {
       std::string a_freq = arg_freq.getValue();
@@ -211,10 +216,13 @@ Params::Params(int argc, char** argv) {
         }
       }
     }
+
     if (arg_repeats.isSet())
       repeats = arg_repeats.getValue();
     else
       repeats = buf_length/(2*N);
+    
+    /*
     if (arg_integration_time.isSet()) {
       integration_time = parse_time(arg_integration_time.getValue());
       if (integration_time <= 0) {
@@ -262,6 +270,7 @@ Params::Params(int argc, char** argv) {
       }
       session_duration_isSet = true;
     }
+    */
 
   }
   catch (TCLAP::ArgException &e) {

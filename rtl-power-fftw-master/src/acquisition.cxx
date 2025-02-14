@@ -263,12 +263,14 @@ void Acquisition::run() {
   std::thread t(&Datastore::fftThread, &data);
 
   // Record the start-of-acquisition timestamp.
+  /*
   startAcqTimestamp = currentDateTime();
   time(&scanBeg);
   if(cntTimeStamps==0) {
     firstAcqTimestamp = currentDateTime();
     cntTimeStamps++;
   }
+  */
   //if( (params.outcnt == 0 && params.talkless) || (params.talkless==false) ) std::cerr << "Acquisition started at " << startAcqTimestamp << std::endl;
 
   // Calculate the stop time. This will only be effective if --strict-time was given.
@@ -414,6 +416,7 @@ void Acquisition::write_data() const {
       pwrdb = 10*log10(data.pwr[i] / data.repeats_done / params.N / actual_samplerate);
                      //- (params.baseline ? aux.baseline_values[i] : 0);
     }
+    /*
     if( params.matrixMode ) {
       // we are accumulating a double, so 8 bytes, removed the sizeof()
       // we are writing a float, so 4 bytes
@@ -439,13 +442,14 @@ void Acquisition::write_data() const {
 
       //params.threshold
 
-      if (pwrdb > -10) {
-        std::cout << "activity on " << freq / 1000000 << std::endl;
+      if (pwrdb > params.threshold) {
+        std::cout << "~" << freq / 1000000 << "|" << pwrdb << std::endl;
       }
 
-    }
+    //}
   }
 
+/*
   if( params.matrixMode ) {
     binfile.close();
     if( tuned_freq >= params.finalfreq ) {
@@ -453,7 +457,6 @@ void Acquisition::write_data() const {
     }
   }
 
-  /*
   if( !params.matrixMode ) {
     // Separate consecutive spectra with empty lines.
     std::cout << std::endl;
