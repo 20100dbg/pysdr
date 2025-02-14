@@ -1,29 +1,37 @@
-var map, heatmapLayer;
-var tabCouchesDessin = [];
-var tabPointsHeatmap = [];
-var layerControl;
+let map, heatmapLayer;
+let tabCouchesDessin = [];
 
-var startDate = 0, endDate = 0;
-var startSpan = 0, endSpan = 0;
+let startDate = 0, endDate = 0;
+let startSpan = 0, endSpan = 0;
+let sliderSpan = 100;
 
-var sliderSpanInit = 100;
-var sliderSpan = sliderSpanInit;
+let typeCoord = "mgrs";
 
-var coucheZone = "";
-var boxZone = "";
-var typeCoord = "mgrs";
-var blockCoordMouse = false;
 
-var dessinerHeatmap = false;
+////////
+let modules = {
+  '1': {'lat':48.88888, 'lng': 7.90017},
+  '2': {'lat':48.89113, 'lng': 7.96126},
+  '3': {'lat':48.88594, 'lng': 7.99696}
+};
 
-/*
- // radius should be small ONLY if scaleRadius is true (or small radius is intended)
-  // if scaleRadius is false it will be the constant radius used in pixels
-  "radius": 2,
-  "maxOpacity": .8,
-  // scales the radius based on map zoom
-  "scaleRadius": true,
-  */
+let detections = [
+  {'module_id': 1, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557211000 },
+  {'module_id': 2, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557222000 },
+  {'module_id': 3, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557233000 },
+  {'module_id': 2, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557242000 },
+  {'module_id': 2, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557244000 },
+  {'module_id': 2, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557246000 },
+  {'module_id': 2, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557248000 },
+  {'module_id': 1, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557255000 }
+];
+
+function zou() {
+  ImportModules(modules);
+  ImportDetections(detections);
+}
+
+
 
 var heatmapcfg = {
   "radius": 30,
@@ -34,74 +42,44 @@ var heatmapcfg = {
   latField: 'lat', lngField: 'lng', valueField: 'count'
 };
 
+
+/////////
+
+
 function resizeWindow()
 {
   var largeur = window.innerWidth - 20;
   document.getElementById("fromSlider").style.width = largeur + 'px';
   document.getElementById("toSlider").style.width = largeur + 'px';
-
-  CreerBandeau(largeur);
+  InitBandeau(largeur);
+  FillBandeau(detections);
 }
 
-window.onresize = function() {
-  resizeWindow();
-}
+window.onresize = function() { resizeWindow(); }
 
 window.onload = function() {
 
   resizeWindow();
 
-  var URL_CARTO = "../tiles"; //dossier local
-  //var URL_CARTO = "https://{s}.tile.openstreetmap.org"; //carto online
+
+  //var URL_CARTO = "../tiles"; //dossier local
+  var URL_CARTO = "https://{s}.tile.openstreetmap.org"; //carto online
   
   var baseLayer = L.tileLayer(URL_CARTO + '/{z}/{x}/{y}.png', { });
-  
   heatmapLayer = new HeatmapOverlay(heatmapcfg);
 
+  
   map = new L.Map('map', {
     editable: true,
-    center: {lat:48, lng:8},
-    zoom: 4,
+    center: {lat:48.87420, lng:8},
+    zoom: 12,
     layers: [baseLayer]
   });
   
-  map.createPane('heatmap');
-  map.getPane('heatmap').style.zIndex = 650;
 
-  layerControl = L.control.layers({'Fond carto': baseLayer }).addTo(map);
-  AjouterCoucheGroupe([heatmapLayer], 'Carte de chaleur');
-
-  map.pm.setLang('fr');
-  map.pm.addControls({ position: 'topleft', drawMarker: false,drawCircleMarker: false,
-    drawPolyline: false,drawText: false,cutPolygon: false, rotateMode: false,
-    drawPolygon:false, drawCircle:false, editMode:false, removalMode: false, dragMode:false });
-
-  map.pm.Toolbar.createCustomControl(
-    { name: "moveZone", block: "edit", className: "control-icon leaflet-pm-icon-drag", 
-    title: "Déplacer la zone", 
-    onClick: () => { if (coucheZone) coucheZone.pm.enableLayerDrag(); } });
-
-  map.pm.Toolbar.createCustomControl(
-    { name: "deleteZone", block: "edit", className: "control-icon leaflet-pm-icon-delete", 
-    title: "Effacer la zone", 
-    onClick: () => { SupprimerZone(); } });
-
-  map.pm.Toolbar.createCustomControl(
-    { name: "zoomTo", block: "custom", className: "control-icon leaflet-pm-icon-zoomto", 
-    title: "Centrer sur les vecteurs", 
-    onClick: () => {
-        CentrerVueCouchesDessin();
-     } });
-
-
-  map.pm.Toolbar.createCustomControl(
-    { name: "validerZone", block: "edit", className: "control-icon leaflet-pm-icon-valider", 
-    title: "Valider la zone", 
-    onClick: (e) => { 
-      if (e && !map.pm.Toolbar.buttons.validerZone._button.disabled) { EnvoyerZone(); }
-      }});
-
-  map.pm.Toolbar.setButtonDisabled("validerZone", true);
+  let layerControl = L.control.layers({'Fond carto': baseLayer }).addTo(map);
+  layerControl.addOverlay(L.layerGroup([heatmapLayer]), 'Carte de chaleur');
+  layerControl._layers[1].layer.addTo(map);
 
   //mise à jour du zoom
   map.on('zoomend', function (e) { 
@@ -111,31 +89,16 @@ window.onload = function() {
   //coordonnées
   var objCoord = new L.Control.Coordinates({position:'bottomright'});
   objCoord.addTo(map);
-  map.on('mousemove', function (e) { if (!blockCoordMouse) objCoord.setCoordinates(e, true); });
+  map.on('mousemove', function (e) { objCoord.setCoordinates(e, true); });
 
   //échelle
   L.control.scale({imperial:false}).addTo(map);
 
   //détection du clic
-  map.on('click', function (e) { blockCoordMouse = !blockCoordMouse; });
-
-  //minimap
-  var map2 = new L.TileLayer(URL_CARTO + '/{z}/{x}/{y}.png', { minZoom: 0, maxZoom: 12 });
-  var miniMap = new L.Control.MiniMap(map2, { zoomLevelOffset: -5, toggleDisplay: true, width:100, height:100 }).addTo(map);
-
-
-
-  //Events dessin de la zone de recherche
-  map.on('pm:drawstart', (e) => { 
-    if (coucheZone) { SupprimerZone(); }
-    map.pm.Toolbar.setButtonDisabled("validerZone", false);
+  map.on('contextmenu', function (e) { 
+    console.log(e.latlng);
+    //LatLongToMGRS(obj.latlng.lat, obj.latlng.lng);
   });
-  
-  //map.on('pm:remove', (e) => { });
 
-  map.on('pm:create', (e) => {
-    coucheZone = e.layer;
 
-    //coucheZone.on('pm:change', (e) => { SauvegarderZone(); });
-  });
 };
