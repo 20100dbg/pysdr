@@ -1,22 +1,3 @@
-<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title></title>
-
-<link href="datatable.css" rel="stylesheet">
-<script src="datatable.js"></script>
-
-<script src="easypick.min.js"></script>
-</head>
-<body>
-
-<table id="myTable" class="display"></table>
-
-<button onclick="get_search_results();">Update carto</button>
-
-<script type="text/javascript">
 
 let start_daterange;
 let end_daterange;
@@ -154,9 +135,3 @@ function importdata(module_id, dt, frq, pwr) {
     table_obj.data.data = table_obj.data.data.concat(newData)
     table_obj.update();
 }
-
-
-</script>
-
-</body>
-</html>

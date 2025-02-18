@@ -167,8 +167,8 @@ def callback_lora(data):
                     cursor.execute(f"SELECT frq_start, frq_end, threshold FROM module WHERE id={msg_from}")
                     module = cursor.fetchone()
 
-                    if module[0] == bytes_to_int(payload[0:2]) 
-                        and module[1] == bytes_to_int(payload[2:4]) 
+                    if module[0] == bytes_to_int(payload[0:2]) \
+                        and module[1] == bytes_to_int(payload[2:4]) \
                         and module[2] == bytes_to_int(payload[4:5]):
                         
                         cursor.execute(f'UPDATE module SET config_applied=true WHERE id={msg_from}')
