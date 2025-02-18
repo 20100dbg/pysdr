@@ -62,8 +62,8 @@ window.onload = function() {
   resizeWindow();
 
 
-  //var URL_CARTO = "../tiles"; //dossier local
-  var URL_CARTO = "https://{s}.tile.openstreetmap.org"; //carto online
+  var URL_CARTO = "../tiles"; //dossier local
+  //var URL_CARTO = "https://{s}.tile.openstreetmap.org"; //carto online
   
   var baseLayer = L.tileLayer(URL_CARTO + '/{z}/{x}/{y}.png', { });
   heatmapLayer = new HeatmapOverlay(heatmapcfg);

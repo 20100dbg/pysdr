@@ -1,9 +1,13 @@
+from enum import Enum
+
 class MsgType(Enum):
     PING = 1
     FRQ = 2
-    CONF = 3
-    ACK = 4
-    ERROR = 5
+    CONF_SCAN = 3
+    CONF_LORA = 4
+    ACK = 5
+    ERROR = 6
+
 
 HEADER_SIZE = 3
 
@@ -12,6 +16,17 @@ def pretty_frq(frq):
     strfrq = str(frq/1000000)
     strfrq = strfrq.ljust(7, '0')
     return strfrq + 'M'
+
+
+def clean_frq(self, frq, step=5):
+    if not isinstance(frq, float): frq = float(frq)
+    frq = frq * 1000
+    reminder = frq % step
+
+    if reminder < (step // 2): frq = frq - reminder
+    else: frq = frq + (step - reminder) 
+    
+    return "{0:.3f}".format(frq / 1000)
 
 
 def int_to_bytes(x, bytes_count=1):

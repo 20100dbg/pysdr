@@ -1,7 +1,7 @@
 import serial
 import time
-from gpiozero import LED
-
+#from gpiozero import LED
+import RPi.GPIO as GPIO
 
 class sx126x():
 
@@ -10,81 +10,89 @@ class sx126x():
     #
 
     SERIAL_PORT_RATE = {1200 : 0b00000000, 2400 : 0b00100000, 4800 : 0b01000000, 9600 : 0b01100000, 19200 : 0b10000000, 38400 : 0b10100000, 57600 : 0b11000000, 115200 : 0b11100000 }
-    SERIAL_PARITY_BIT = {'8N1' : 0b00000000, '8O1' : 0b00001000, '8E1' : 0b00010000 } #serial.PARITY_NONE - 8N1, serial.PARITY_ODD - 8O1, serial.PARITY_EVEN - 8E1
+    SERIAL_PARITY_BIT = {"8N1" : 0b00000000, "8O1" : 0b00001000, "8E1" : 0b00010000 } #serial.PARITY_NONE - 8N1, serial.PARITY_ODD - 8O1, serial.PARITY_EVEN - 8E1
     AIR_DATA_RATE = {0.3 : 0b00000000, 1.2 : 0b00000001, 2.4 : 0b00000010, 4.8 : 0b00000011, 9.6 : 0b00000100, 19.2 : 0b00000101, 38.4 : 0b00000110, 62.5 : 0b00000111 }
     SUB_PACKET_SIZE = {240 : 0b00000000, 128 : 0b01000000, 64 : 0b10000000, 32 : 0b11000000 }
-    CHANNEL_NOISE = {'disabled' : 0b00000000, 'enabled' : 0b00100000 }
+    CHANNEL_NOISE = {"disabled" : 0b00000000, "enabled" : 0b00100000 }
     TX_POWER = {22 : 0b00000000, 17 : 0b00000001, 13 : 0b00000010, 10 : 0b00000011 }
-    ENABLE_RSSI = {'disabled' : 0b00000000, 'enabled' : 0b10000000 }
-    TRANSMISSION_MODE = {'fixed' : 0b01000000, 'transparent' : 0b000000000 }
-    ENABLE_REPEATER = {'disabled' : 0b00000000, 'enabled' : 0b00100000 }
-    ENABLE_LBT = {'disabled' : 0b00000000, 'enabled' : 0b00010000 }
-    WOR_CONTROL = {'transmitter' : 0b00001000, 'receiver' : 0b00000000 }
+    ENABLE_RSSI = {"disabled" : 0b00000000, "enabled" : 0b10000000 }
+    TRANSMISSION_MODE = {"fixed" : 0b01000000, "transparent" : 0b000000000 }
+    ENABLE_REPEATER = {"disabled" : 0b00000000, "enabled" : 0b00100000 }
+    ENABLE_LBT = {"disabled" : 0b00000000, "enabled" : 0b00010000 }
+    WOR_CONTROL = {"transmitter" : 0b00001000, "receiver" : 0b00000000 }
     WOR_CYCLE = {500 : 0b00000000, 1000 : 0b00000001, 1500 : 0b00000010, 2000 : 0b00000011, 2500 : 0b00000100, 3000 : 0b00000101, 3500 : 0b00000110, 4000 : 0b00000111 }
-
+    BROADCAST_MONITORING_ADDRESS = 65535
     #
     # Init : the module is reading the chip current settings and accordingly fill local variables
     #
 
-    """
-    address=100, network=0, channel=18, tx_power=22, enable_rssi=False,
-    air_data_rate=2.4, sub_packet_size=240, key=0,
-    repeater='none', netid1=0, netid2=0, debug=False
-    """
-    
-    def __init__(self, **kwargs):
+    def __init__(self, port="/dev/ttyS0", debug=False):
         """ Constructor """
    
-        self.__set_config_serial()
-        self.serial = self.__open_serial()
-        self.debug = True if "debug" in kwargs and kwargs['debug'] else False 
+        #params par défaut
+        self.default_params = {"addrh" : 0, "addrl": 0, "network": 0, "air_data_rate": 2.4,
+                        "sub_packet_size": 240, "channel_noise": "disabled", "tx_power": 22,
+                        "channel": 18, "enable_rssi": "disabled", "transmission_mode": "transparent",
+                        "enable_repeater": "disabled", "enable_lbt": "disabled", "wor_control": "receiver",
+                        "wor_cycle": 2000, "crypth": 0, "cryptl": 0 }
 
+        self.serial_params = {"port": port, "baudrate": 9600, "parity": serial.PARITY_NONE, 
+                                "stopbits": serial.STOPBITS_ONE, "bytesize": serial.EIGHTBITS}
+
+        self.conf_mode = False
+        self.params = self.default_params
+        #/dev/ttyS0 or /dev/ttyAMA0
+
+        self.serial = self.__open_serial(port=self.serial_params["port"], timeout=1)
+        self.debug = debug
+
+        self.M0 = 22
+        self.M1 = 27
+
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
+        GPIO.setup(self.M0, GPIO.OUT)
+        GPIO.setup(self.M1, GPIO.OUT)
+
+        """
         self.M0 = LED("GPIO22")
         self.M1 = LED("GPIO27")
+        """
 
-        if kwargs:
-            self.set_config(**kwargs)
-            self.write_config()
+        read_params = self.read_registers()
+        
+        if self.debug:
+            print("[+] Reading registers")
+            print(read_params)
+
+        #Fill class variables with config currently applied to chip
+        if read_params:
+            self.set_config(addrh=read_params['addrh'], addrl=read_params['addrl'], network=read_params['network'], 
+                            air_data_rate=read_params['air_data_rate'], sub_packet_size=read_params['sub_packet_size'],
+                            channel_noise=read_params['channel_noise'], tx_power=read_params['tx_power'], 
+                            channel=read_params['channel'], enable_rssi=read_params['enable_rssi'], 
+                            transmission_mode=read_params['transmission_mode'], enable_repeater=read_params['enable_repeater'], 
+                            enable_lbt=read_params['enable_lbt'], wor_control=read_params['wor_control'], 
+                            wor_cycle=read_params['wor_cycle'], crypth=read_params['crypth'], cryptl=read_params['cryptl'],
+                            write_registers=False)
         else:
-            print("reading config")
-            arr = self.read_config()
-
-            if arr:
-                #Fill class variables with config currently applied to chip
-                self.set_config(address=arr[0], network=arr[1], channel=arr[8], tx_power=arr[7], enable_rssi=arr[9],
-                        air_data_rate=arr[4], sub_packet_size=arr[5], key=0,
-                        repeater='none', netid1=0, netid2=0)
-            else:
-                print("[-] Error reading config")
+            print("[-] Error reading config")
 
 
     #
     # Serial
     #
 
-    def __set_config_serial(self, port="/dev/ttyS0", serial_port_rate=9600,
-                            timeout=1, serial_parity_bit=serial.PARITY_NONE):
-        """ Set serial related class variables """
+    def __open_serial(self, port, timeout=1):
+        """ Tries to open serial port """
 
-        self.port = port
-        self.serial_port_rate = serial_port_rate
-        self.timeout = timeout
-        self.serial_parity_bit = serial_parity_bit
-        self.lora_parity_bit = self.__convert_serial_parity(self.serial_parity_bit)
+        #always keep serial params by default to avoid misconfiguration
 
-
-    def __open_serial(self):
-        """ Tries to open serial port. Will try ttyS0 and AMA0. Return serial variable or None if failed """
-
-        #/dev/ttyAMA0
-
-        return serial.Serial(port=self.port, baudrate=self.serial_port_rate,
-                    parity=self.serial_parity_bit, stopbits=serial.STOPBITS_ONE,
-                    bytesize=serial.EIGHTBITS, timeout=self.timeout)
-
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
+        return serial.Serial(port=port, 
+                    baudrate=self.serial_params["baudrate"],
+                    parity=self.serial_params["parity"], 
+                    stopbits=self.serial_params["stopbits"],
+                    bytesize=self.serial_params["bytesize"], timeout=timeout)
 
 
     def __convert_serial_parity(self,parity):
@@ -101,6 +109,11 @@ class sx126x():
     #
 
 
+    def __int_to_bytes_pair(self, b):
+        """ Return two 8bit integers from a 16bit integer """
+        return b.to_bytes(2, "big")
+
+
     def __bytes_pair_to_int(self, b1, b2):
         """ Create a 16bit integer from two 8bit integers. Useful to get two numbers in a single register """
         return (b1 << 8) + b2
@@ -108,7 +121,7 @@ class sx126x():
 
     def __btohex(self, b):
         """ Get bytes to proper hex notation """
-        return ' '.join(['{:02X}'.format(x) for x in b])
+        return " ".join(["{:02X}".format(x) for x in b])
 
 
     #
@@ -123,11 +136,10 @@ class sx126x():
             return
 
         if self.debug:
-            print(f'[+] SENDING {self.__btohex(data)}')
-            print(f'[+] SENDING {data}')
+            print(f"[+] SENDING {len(data)} bytes : {self.__btohex(data)}")
         
         self.serial.write(data)
-        time.sleep(0.01)
+        time.sleep(0.1)
 
 
     def send_string(self, data):
@@ -143,14 +155,19 @@ class sx126x():
     def receive(self):
         """ Check if data is received """
 
-        data = self.serial.read_until(expected='')
+        #safety to make sure we receive conf ACK
+        if self.conf_mode:
+            return None
+
+        #data = self.serial.read(self.serial.in_waiting)
+        data = None
+        if self.serial.in_waiting:
+            data = self.serial.read_until(expected='')
 
         if not data:
             data = None
         elif self.debug:
-            print(f'[+] RECEIVED {len(data)} bytes')
-            print(f'[+] {self.__btohex(data)}')
-            print(f'[+] {data}')
+            print(f"[+] RECEIVED {len(data)} bytes : {self.__btohex(data)}")
 
         return data
 
@@ -159,193 +176,253 @@ class sx126x():
     # LoRa config
     #
 
-    def __set_mode(self, mode):
-        """ Set the LoRa HAT mode from software instead using the card's jumpers """
-        if mode == 'conf':
-            self.M0.off()
-            self.M1.on()
-        elif mode == 'wor':
-            self.M0.on()
-            self.M1.off()
-        elif mode == 'sleep':
-            self.M0.on()
-            self.M1.on()
-        else: #transmission mode
-            self.M0.off()
-            self.M1.off()
+    def set_mode(self, mode):
+        """ Set the LoRa HAT mode from software instead using the card"s jumpers """
+        
+        """
+        self.M0.off()
+        self.M1.on()
+        """
 
-        time.sleep(0.1)
+        if self.debug:
+            print(f"[+] Setting mode {mode}")
+
+        self.conf_mode = False
+
+        if mode == "conf":
+            self.conf_mode = True
+            GPIO.output(self.M0, False)
+            GPIO.output(self.M1, True)
+        elif mode == "wor":
+            GPIO.output(self.M0, True)
+            GPIO.output(self.M1, False)
+        elif mode == "sleep":
+            GPIO.output(self.M0, True)
+            GPIO.output(self.M1, True)
+        else: #transmission mode
+            GPIO.output(self.M0, False)
+            GPIO.output(self.M1, False)
+
+        time.sleep(0.2)
 
 
     def show_config(self):
         """ Print some useful config variables to help debug """
-        print(f'[+] Channel {self.channel}, address {self.logicalAddress}, network {self.network}, key {self.key}')
-        x = self.address.to_bytes(2, 'big')
-        print(f'[+] Mode {self.transmission_mode}, real address {self.address} ({x}), repeater {self.enable_repeater}')
+        print(f"[+] logical address {self.logical_address}, addrh {self.params['addrh']}, addrl {self.params['addrl']}")
+        print(f"[+] channel {self.params['channel']}, network {self.params['network']}, crypth {self.params['crypth']}, cryptl {self.params['cryptl']}")        
+        print()
+        print(f"[+] params {self.params}")
+        print()
 
 
-    def set_config(self, address=100, network=0, channel=18, tx_power=22, enable_rssi=False,
-                    air_data_rate=2.4, sub_packet_size=240, key=0,
-                    repeater='none', netid1=0, netid2=0, debug=False):
-        """ Update class internals variables. This method DOES NOT update chip's registers """
+    def set_repeater(self, mode, client_address=None, repeater_netid1=None, repeater_netid2=None):
+        """ Helper to enable repeater mode """
+
+        if mode == "server":
+            self.params["transmission_mode"] = "fixed"
+            self.params["addrh"] = repeater_netid1
+            self.params["addrl"] = repeater_netid2
+            self.params["enable_repeater"] = "enabled"
+
+        elif mode == "client":
+            self.params["transmission_mode"] = "fixed"
+            address_tmp = self.__int_to_bytes_pair(address)
+            self.params["addrh"] = address_tmp[0]
+            self.params["addrl"] = address_tmp[1]
+            self.params["enable_repeater"] = "disabled"
+
+        self.write_registers()
+
+
+    def set_logical_address(self, address):
+        """ Helper to set logical address. """
+        """ Ensure transmission_mode is transparent and repeater mode disabled """
+
+        #self.params["transmission_mode"] = "transparent"
+        #self.params["enable_repeater"] = "disabled"
+        self.logical_address = address
         
-        self.channel = channel
-        self.key = key
-        self.network = network
-        self.logicalAddress = address
+        address_tmp = self.__int_to_bytes_pair(self.BROADCAST_MONITORING_ADDRESS)
+        self.params["addrh"] = address_tmp[0]
+        self.params["addrl"] = address_tmp[1]
+        self.write_registers()
 
-        self.air_data_rate = air_data_rate
-        self.sub_packet_size = sub_packet_size
-        self.channel_noise = 'disabled' #current noise + last message's db on request
-        self.tx_power = tx_power
-        self.enable_rssi = 'enabled' if enable_rssi else 'disabled' #every message get one more byte for RSSI
-        self.enable_lbt = 'disabled'
-        self.wor_control = 'transmitter'
-        self.wor_cycle = 2000
 
-        if repeater == "server":
-            self.transmission_mode = 'fixed'
-            self.address = self.__bytes_pair_to_int(netid1, netid2)
-            self.enable_repeater = 'enabled'
-        elif repeater == "client":
-            self.transmission_mode = 'fixed'
-            self.address = address
-            self.enable_repeater = 'disabled'
-        else: #none
-            self.transmission_mode = 'transparent'
-            self.address = 65535
-            self.enable_repeater = 'disabled'
+    def set_config(self, addrh=None, addrl=None, network=None, air_data_rate=None, sub_packet_size=None,
+                        channel_noise=None, tx_power=None, channel=None, enable_rssi=None, 
+                        transmission_mode=None, enable_repeater=None, enable_lbt=None,
+                        wor_control=None, wor_cycle=None, crypth=None, cryptl=None,
+                        logical_address=None, write_registers=True):
+                  
+        """ Human readable settings from user are processed into internal parameters. """
+
+        if addrh: self.params["addrh"] = addrh
+        if addrl: self.params["addrl"] = addrl
+        if network: self.params["network"] = network
+        if air_data_rate: self.params["air_data_rate"] = air_data_rate
+        if sub_packet_size: self.params["sub_packet_size"] = sub_packet_size
+        if channel_noise is not None: self.params["channel_noise"] = "enabled" if channel_noise == 'enabled' or channel_noise == True else "disabled"
+        if tx_power: self.params["tx_power"] = tx_power
+        if channel: self.params["channel"] = channel
+        if enable_rssi is not None: self.params["enable_rssi"] = "enabled" if enable_rssi == 'enabled' or enable_rssi == True else "disabled"
+        if transmission_mode: self.params["transmission_mode"] = transmission_mode
+        if enable_repeater is not None: self.params["enable_repeater"] = "enabled" if enable_repeater == 'enabled' or enable_repeater == True else "disabled"
+        if enable_lbt is not None: self.params["enable_lbt"] = "enabled" if enable_lbt == 'enabled' or enable_lbt == True else "disabled"
+        if wor_control: self.params["wor_control"] = wor_control
+        if wor_cycle: self.params["wor_cycle"] = wor_cycle
+        if crypth: self.params["crypth"] = crypth
+        if cryptl: self.params["cryptl"] = cryptl
+
+        if logical_address:
+            self.logical_address = logical_address
+            address_tmp = self.__int_to_bytes_pair(self.BROADCAST_MONITORING_ADDRESS)
+            self.params["addrh"] = address_tmp[0]
+            self.params["addrl"] = address_tmp[1]
+
+        if write_registers:
+            self.write_registers()
 
 
     def factory_reset(self):
-        """ Request factory reset to the chip. NOT TESTED YET """
-        config = bytearray(b'\xC0\x00\x09\x12\x34\x00\x61')
-        ret = self.send_config(bytes(config))
+
+        self.params = self.default_params
+        self.write_registers()
+
+        """ Request factory reset to the chip. NOT TESTED YET 
+        config = bytearray(b"\xC0\x00\x09\x12\x34\x00\x61")
+        ret = self.write_serial(bytes(config))
         return ret
+        """
 
 
-    def read_config(self):
+    def read_registers(self):
         """ Request config read to the chip. Returns refined array containing human readable values """
-        config = bytearray(b'\xC1\x00\x09')
-        ret = self.send_config(bytes(config))
 
-        if ret == b'\xff\xff\xff' or not ret:
+        def registers_to_params(arr):
+            """ Transform byte array to array of human readable values """
+
+            addrh = arr[0]
+            addrl = arr[1]
+            network = arr[2]
+            tmp = f"{arr[3]:0>8b}"
+            
+            serial_port_rate = [k for k, v in self.SERIAL_PORT_RATE.items() if v == int(tmp[:3], 2) << 5][0]
+            serial_parity_bit = [k for k, v in self.SERIAL_PARITY_BIT.items() if v == int(tmp[3:5], 2) << 3][0]
+            air_data_rate = [k for k, v in self.AIR_DATA_RATE.items() if v == int(tmp[5:], 2)][0]
+            tmp = f"{arr[4]:0>8b}"
+            sub_packet_size = [k for k, v in self.SUB_PACKET_SIZE.items() if v == int(tmp[:2], 2) << 6][0]
+            channel_noise = [k for k, v in self.CHANNEL_NOISE.items() if v == int(tmp[2:3], 2) << 5][0]
+            tx_power = [k for k, v in self.TX_POWER.items() if v == int(tmp[6:], 2)][0]
+            channel = arr[5]
+            tmp = f"{arr[6]:0>8b}"
+            enable_rssi = [k for k, v in self.ENABLE_RSSI.items() if v == int(tmp[:1], 2) << 7][0]
+            transmission_mode = [k for k, v in self.TRANSMISSION_MODE.items() if v == int(tmp[1:2], 2) << 6][0]
+            enable_repeater = [k for k, v in self.ENABLE_REPEATER.items() if v == int(tmp[2:3], 2) << 5][0]
+            enable_lbt = [k for k, v in self.ENABLE_LBT.items() if v == int(tmp[3:4], 2) << 4][0]
+            wor_control = [k for k, v in self.WOR_CONTROL.items() if v == int(tmp[4:5], 2) << 3][0]
+            wor_cycle = [k for k, v in self.WOR_CYCLE.items() if v == int(tmp[5:], 2)][0]
+            crypth = arr[7]
+            cryptl = arr[8]
+
+            #"serial_port_rate": serial_port_rate, 
+            #"serial_parity_bit": serial.PARITY_NONE, 
+
+            return {"addrh" : addrh, "addrl": addrl, "network": network, "air_data_rate": air_data_rate,
+                    "sub_packet_size": sub_packet_size, "channel_noise": channel_noise, "tx_power": tx_power,
+                    "channel": channel, "enable_rssi": enable_rssi, "transmission_mode": transmission_mode,
+                    "enable_repeater": enable_repeater, "enable_lbt": enable_lbt, "wor_control": wor_control,
+                    "wor_cycle": wor_cycle, "crypth": crypth, "cryptl": cryptl}
+
+            
+            #end registers_to_params
+
+        config = bytearray(b"\xC1\x00\x09")
+        ret = self.write_serial(bytes(config))
+
+        if ret == b"\xff\xff\xff" or not ret:
             return None
 
-        return self.config_bytes_to_arr(ret[3:])
+        return registers_to_params(ret[3:])
 
 
-    def config_bytes_to_arr(self, arr):
-        """ Transform byte array to array of human readable values """
-
-        addrh = arr[0]
-        addrl = arr[1]
-        addr = self.__bytes_pair_to_int(addrh, addrl)
-        netid = arr[2]
-        tmp = f'{arr[3]:0>8b}'
-        
-        serial_port_rate = [k for k, v in self.SERIAL_PORT_RATE.items() if v == int(tmp[:3], 2) << 5][0]
-        serial_parity_bit = [k for k, v in self.SERIAL_PARITY_BIT.items() if v == int(tmp[3:5], 2) << 3][0]
-        air_data_rate = [k for k, v in self.AIR_DATA_RATE.items() if v == int(tmp[5:], 2)][0]
-        tmp = f'{arr[4]:0>8b}'
-        sub_packet_size = [k for k, v in self.SUB_PACKET_SIZE.items() if v == int(tmp[:2], 2) << 6][0]
-        channel_noise = [k for k, v in self.CHANNEL_NOISE.items() if v == int(tmp[2:3], 2) << 5][0]
-        tx_power = [k for k, v in self.TX_POWER.items() if v == int(tmp[6:], 2)][0]
-        channel = arr[5]
-        tmp = f'{arr[6]:0>8b}'
-        enable_rssi = [k for k, v in self.ENABLE_RSSI.items() if v == int(tmp[:1], 2) << 7][0]
-        transmission_mode = [k for k, v in self.TRANSMISSION_MODE.items() if v == int(tmp[1:2], 2) << 6][0]
-        enable_repeater = [k for k, v in self.ENABLE_REPEATER.items() if v == int(tmp[2:3], 2) << 5][0]
-        enable_lbt = [k for k, v in self.ENABLE_LBT.items() if v == int(tmp[3:4], 2) << 4][0]
-        wor_mode = [k for k, v in self.WOR_CONTROL.items() if v == int(tmp[4:5], 2) << 3][0]
-        wor_cycle = [k for k, v in self.WOR_CYCLE.items() if v == int(tmp[5:], 2)][0]
-        crypth = arr[7]
-        cryptl = arr[8]
-        crypt = self.__bytes_pair_to_int(crypth, cryptl)
-
-        return [addr, netid, serial_port_rate, serial_parity_bit, air_data_rate,
-                sub_packet_size, channel_noise, tx_power, channel, enable_rssi, transmission_mode,
-                enable_repeater, enable_lbt, wor_mode, wor_cycle, crypt]
-
-
-
-    def write_config(self):
-        """ Write current class variables to chip's registers """
+    def write_registers(self):
+        """ Write current class variables to chip"s registers """
 
         RESERVE = 0b00000000
 
         #C0 = config, 00 = start address, 09 = length
-        config = bytearray(b'\xC0\x00\x09')
+        config = bytearray(b"\xC0\x00\x09")
 
-        address_tmp = self.address.to_bytes(2, 'big')
-        config.append(address_tmp[0])
-        config.append(address_tmp[1])
+        config.append(self.params["addrh"])
+        config.append(self.params["addrl"])
 
-        config.append(self.network)
+        config.append(self.params["network"])
 
-        config.append(self.SERIAL_PORT_RATE[self.serial_port_rate] +
-                      self.SERIAL_PARITY_BIT[self.lora_parity_bit] +
-                      self.AIR_DATA_RATE[self.air_data_rate])
+        lora_parity_bit = self.__convert_serial_parity(self.serial_params["parity"])
+        config.append(self.SERIAL_PORT_RATE[self.serial_params["baudrate"]] +
+                      self.SERIAL_PARITY_BIT[lora_parity_bit] +
+                      self.AIR_DATA_RATE[self.params["air_data_rate"]])
 
 
-        config.append(self.SUB_PACKET_SIZE[self.sub_packet_size] +
-                      self.CHANNEL_NOISE[self.channel_noise] +
+        config.append(self.SUB_PACKET_SIZE[self.params["sub_packet_size"]] +
+                      self.CHANNEL_NOISE[self.params["channel_noise"]] +
                       RESERVE +
-                      self.TX_POWER[self.tx_power])
+                      self.TX_POWER[self.params["tx_power"]])
         
-        config.append(self.channel)
+        config.append(self.params["channel"])
 
-        config.append(self.ENABLE_RSSI[self.enable_rssi] +
-                      self.TRANSMISSION_MODE[self.transmission_mode] +
-                      self.ENABLE_REPEATER[self.enable_repeater] +
-                      self.ENABLE_LBT[self.enable_lbt] +
-                      self.WOR_CONTROL[self.wor_control] +
-                      self.WOR_CYCLE[self.wor_cycle])
+        config.append(self.ENABLE_RSSI[self.params["enable_rssi"]] +
+                      self.TRANSMISSION_MODE[self.params["transmission_mode"]] +
+                      self.ENABLE_REPEATER[self.params["enable_repeater"]] +
+                      self.ENABLE_LBT[self.params["enable_lbt"]] +
+                      self.WOR_CONTROL[self.params["wor_control"]] +
+                      self.WOR_CYCLE[self.params["wor_cycle"]])
 
-        key_tmp = self.key.to_bytes(2, 'big')
-        config.append(key_tmp[0])
-        config.append(key_tmp[1])
+        config.append(self.params["crypth"])
+        config.append(self.params["cryptl"])
         
-        self.send_config(bytes(config))
+        self.write_serial(bytes(config))
 
 
-    def send_config(self, data):
-        """ Send bytes to chip and returns chip's response """
+    def write_serial(self, data):
+        """ Send bytes to chip and returns chip"s response """
 
-        self.__set_mode('conf')
+        self.set_mode("conf")
         
         self.serial.write(data)
-        time.sleep(0.5)
+        time.sleep(0.1)
+        #ret = self.serial.read(self.serial.in_waiting)
         ret = self.serial.read_until(expected='')
         
         if self.debug:
             print(f"[+] Config sent {self.__btohex(data)}")
             print(f"[+] Config recv {self.__btohex(ret)}")
 
-            if ret == b'\xff\xff\xff':
+            if ret == b"\xff\xff\xff":
                 print("[-] CONFIG ERROR")
 
-        self.__set_mode('')
+        self.set_mode("transmission")
         return ret
 
     #
     # LoRa chip utilities
     #
 
-    def getRSSI(self):
-        """ Send bytes to chip and returns chip's response """
+    def get_channel_noise(self):
+        """ Request current channel noise and last message"s RSSI """
+        #Chip needs to be in transmitting or WOR mode
+
+        if self.params["channel_noise"] == "disabled":
+            return None
+
+        self.serial.write(b"\xC0\xC1\xC2\xC3\x00\x02")
         
-        if self.channel_noise == 'disabled':
-            return
+        ret = self.serial.read_until(expected="")
 
-        self.serial.write(b'\xC0\xC1\xC2\xC3\x00\x02')
-        
-        ret = self.serial.read_until(expected='')
+        channel_noise = ret[3]
+        last_rssi = ret[4]
 
-        currentNoise = ret[3]
-        lastReceive = ret[4]
-
-        return currentNoise, lastReceive
+        return channel_noise, last_rssi
 
     #
     # Miscellanous
@@ -353,8 +430,11 @@ class sx126x():
 
     def str_hex_to_bytes(self, txt):
         """ Transform hex string to bytes """
-        txt = txt.replace(' ', '')
+        txt = txt.replace(" ", "")
         return bytes.fromhex(txt)
 
     def close(self):
         self.serial.close()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()

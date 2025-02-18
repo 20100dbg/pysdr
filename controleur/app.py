@@ -1,5 +1,6 @@
-import json
 import gevent
+import helper
+import json
 import sqlite3
 import sx126x
 import threading
@@ -8,9 +9,6 @@ import os
 from datetime import datetime
 from flask import Flask, request, make_response
 from flask_socketio import SocketIO, emit
-from signal import signal, SIGINT
-from enum import Enum
-import helper
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins='*',async_mode='gevent')
@@ -32,6 +30,7 @@ def main():
     tpl = tpl.replace('{{modules}}', json.dumps(modules))
     tpl = tpl.replace('{{detections}}', json.dumps(detections))
 
+    #Send back HTTP response
     response = make_response(tpl)
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response
@@ -113,12 +112,14 @@ def set_nb_module(nb):
 
 @socketio.on('ping')
 def ping(module_id):
+    """ Send PING to module"""
     lora.send_bytes(build_message(MsgType.PING.value, local_msg_id, module_id))
     increment_msg_id()
 
 
 @socketio.on('reset_db')
 def reset_db(params):
+    """ Reset DB : empty both module and detection tables """
     cursor.execute(f'DELETE FROM module')
     db.commit()
 
@@ -127,12 +128,14 @@ def reset_db(params):
 
 
 def get_time():
+    """ Return time if set """
     if time_setup:
         return time.time()
     return 0
 
 
 def callback_lora(data):
+    """ Handles every message received from LoRa """
 
     global lora
 
@@ -145,6 +148,7 @@ def callback_lora(data):
             payload = data[HEADER_SIZE:]
             current_dt = get_time()
 
+            #A module detected something
             if msg_type == MsgType.FRQ.value:
 
                 frq = bytes_to_int(payload[0:4])
@@ -152,6 +156,8 @@ def callback_lora(data):
                 db.commit()
                 socketio.emit('got_frq', {'dt': current_dt, 'module_id': msg_from, 'frq': frq})
 
+
+            #A module sent back ACK
             elif msg_type == MsgType.ACK.value:
                 
                 #check history
@@ -168,6 +174,7 @@ def callback_lora(data):
                         cursor.execute(f'UPDATE module SET config_applied=true WHERE id={msg_from}')
                         socketio.emit('got_config_ack', msg_from)
 
+
                 elif original_msg_type == MsgType.PING.value:
 
                     cursor.execute(f'UPDATE module SET last_ping={current_dt} WHERE id={msg_from}')
@@ -176,13 +183,6 @@ def callback_lora(data):
 
             time.sleep(0.01)
 
-
-"""
-def init_module(module_id):
-    data = [('',module_id, 0, 0, 0) for _ in range(4)]
-    cursor.executemany("INSERT INTO sdr VALUES (?, ?, ?, ?, ?)", data)
-    db.commit()
-"""    
 
 #Entry point
 
