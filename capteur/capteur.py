@@ -24,6 +24,18 @@ class MsgType(Enum):
 HEADER_SIZE = 3
 
 
+
+def clean_frq(frq, step=5):
+    if not isinstance(frq, float): frq = float(frq)
+    reminder = frq % step
+
+    if reminder < (step // 2): frq = frq - reminder
+    else: frq = frq + (step - reminder) 
+    
+    #return "{0:.3f}".format(frq / 1000)
+    return int(frq)
+
+
 def int_to_bytes(x, bytes_count=1):
     return x.to_bytes(bytes_count, 'big')
 
@@ -106,36 +118,46 @@ def receive_lora():
                 frq_end = int.from_bytes(data[2:4])
                 threshold = int.from_bytes(data[4:5]) * -1
                 
-                scanner.set_config(self, frq_start=frq_start, frq_end=frq_end, threshold=threshold)
+                scanner.set_config(frq_start=frq_start, frq_end=frq_end, threshold=threshold)
 
                 print(f"new conf : {frq_start} - {frq_end} / {new_threshold}")
                 lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr))
 
             #Update LoRa config
             elif msg_type == MsgType.CONF_LORA.value:
-                #channel
-                #air_data_rate
-                #lora.set_config(air_data_rate=0.3)
+
+                channel = payload[0]
+                air_data_rate = int.from_bytes(payload[1:3]) / 10
+                lora.set_config(channel=channel,air_data_rate=air_data_rate)
+                
                 lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr))
-                pass
 
             elif msg_type == MsgType.PING.value:
+
                 lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr))
 
-        time.sleep(0.01)
+        time.sleep(0.1)
 
 
 def callback_scanner(frq, pwr):
     """ Handles frequencies detection from scanner """
 
     print(f"got activity ! {frq} / {pwr}")
+    frq = clean_frq(frq, step=25)
+    send = True
 
-    data = b''
-    data += int_to_bytes(frq, 4) 
-    data += struct.pack("f", pwr)
+    if frq not in detection_history:
+        detection_history[frq] = time.time()
+    elif time.time() - detection_history[frq] < timeout:
+        send = False
 
-    lora.send_bytes(build_message(MsgType.FRQ.value, local_msg_id, local_addr, data))
-    increment_msg_id()
+    if send:
+        data = b''
+        data += int_to_bytes(frq, 4) 
+        data += struct.pack("f", pwr)
+
+        lora.send_bytes(build_message(MsgType.FRQ.value, local_msg_id, local_addr, data))
+        increment_msg_id()
 
 
     
@@ -171,7 +193,7 @@ channel = 18
 air_data_rate = 0.3
 
 
-lora = sx126x.sx126x()
+lora = sx126x.sx126x(port="/dev/ttyS0", debug=False)
 lora.set_config(channel=channel,logical_address=local_addr,network=0, tx_power=22, 
                 air_data_rate=air_data_rate, sub_packet_size=32)
 
@@ -179,7 +201,7 @@ thread_lora = threading.Thread(target=receive_lora)
 thread_lora.start()
 
 
-frq_start, frq_end = 400*10**6, 420*10**6
+frq_start, frq_end = 400*10**6, 480*10**6
 current_lat, current_lng = None, None
 
 
@@ -191,15 +213,24 @@ scanner.set_config(frq_start=400, frq_end=420, threshold=-10)
 scanner.activate(blocking=False)
 
 
+detection_history = {}
+timeout = 10
 
 while True:
-    try:
-        input()
-    except KeyboardInterrupt:
-        scanner.stop()
-        break
+
+    #A replacer dans la boucle a la suite du GPS query
+    
+    for frq, val in detection_history.copy().items():
+        if time.time() - detection_history[frq] > timeout:
+            del detection_history[frq]
 
 
+    time.sleep(5)
+
+
+scanner.stop()
+lora.stop()
+thread_lora.join()
 
 """
 #GPS init

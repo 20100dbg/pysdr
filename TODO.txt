@@ -1,7 +1,4 @@
-
-- controle des messages doublons 
 - configuration channel
-
 
 type de messages
 - CONF_SCAN : configurer frq_start / frq_end / threshold
@@ -9,16 +6,14 @@ type de messages
 - message AUDIT/STATUS : remonter le niveau de batterie, nb/état clés SDR, pos GPS
 
 
-capteur
-- arrondir la frq
-- ne pas envoyer de doublons (vérifier l'écart frq + temps entre deux détections)
-- réaction si émission permanente ; cooldown entre deux émissions d'alerte ?
-- enregistrer la config en JSON ?
-
-
-dashboard controller
--- carto
--- historique
-
 - support de DSD
 - récupérer le niveau de batterie
+
+
+
+
+
+location /tiles/ {
+    autoindex on;
+    alias /home/rpi/dia/tiles/;
+}

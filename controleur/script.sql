@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS module (
     threshold INTEGER,
     latitude REAL,
     longitude REAL,
-    last_config DATETIME, 
     last_ping DATETIME,
     config_applied BOOLEAN
     );

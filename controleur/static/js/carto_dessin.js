@@ -1,4 +1,4 @@
-function DessinerPoint(coordPoint, data = {}, taille = 4, couleur = "#000000", label = '')
+function draw_point(coordPoint, data = {}, taille = 4, couleur = "#000000", label = '')
 {
 
   let layer = L.circleMarker(coordPoint, {radius: taille, stroke:true, 
@@ -6,38 +6,23 @@ function DessinerPoint(coordPoint, data = {}, taille = 4, couleur = "#000000", l
       mydata: 'hi there'}).addTo(map).on('click', onClick);
 
   label = "" +label;
-  if (label != '') layer.bindTooltip(label, {permanent:true, opacity: 0.6, className: 'matooltip'}).openTooltip();
+  if (label != '') layer.bindTooltip(label, {permanent:true, opacity: 0.6, className: 'tooltip'}).openTooltip();
 }
 
 
-function DessinerLigne(listeCoord, taille, couleur, gdh)
+function show_heatmap(show)
 {
-  let layer = L.polyline(listeCoord, {weight: taille, color: couleur}).addTo(map);
-  tabCouchesDessin.push({'layer':layer, 'gdh':gdh, 'shown':true});
-}
-
-function DessinerSurface(listeCoord, taille, couleur, gdh)
-{
-  let layer = L.polygon(listeCoord, {weight: taille, color: couleur}).addTo(map);
-  tabCouchesDessin.push({'layer':layer, 'gdh':gdh, 'shown':true});
-}
-
-
-
-function AfficherHeatmap(afficher)
-{
-  dessinerHeatmap = afficher;
-  if (afficher) layerControl._layers[1].layer.addTo(map);
+  if (show) layerControl._layers[1].layer.addTo(map);
   else layerControl._layers[1].layer.removeFrom(map);
 }
 
-function DessinerHeatmap(tabPointsHeatmap)
+function draw_heatmap(tabPointsHeatmap)
 {
   var tabPoints = [];
 
   for (var i = 0; i < tabPointsHeatmap.length; i++)
   {
-    if (tabPointsHeatmap[i].gdh >= startSpan && tabPointsHeatmap[i].gdh <= endSpan)
+    if (tabPointsHeatmap[i].dt >= carto_start_range && tabPointsHeatmap[i].dt <= carto_end_range)
     {
       tabPoints.push(tabPointsHeatmap[i]);
     }
@@ -49,10 +34,10 @@ function DessinerHeatmap(tabPointsHeatmap)
 }
 
 
-function UpdateDrawPoints()
+function UpdateDrawPoints(points)
 {
   for (let i = 0; i < tabCouchesDessin.length; i++) {
-    if (tabCouchesDessin[i].gdh >= startSpan && tabCouchesDessin[i].gdh <= endSpan) {
+    if (tabCouchesDessin[i].dt >= carto_start_range && tabCouchesDessin[i].dt <= carto_end_range) {
       if (!tabCouchesDessin[i].shown) {
         tabCouchesDessin[i].layer.addTo(map);
         tabCouchesDessin[i].shown = true;
@@ -65,7 +50,6 @@ function UpdateDrawPoints()
       }
     }
   }
-
 }
 
 

@@ -52,12 +52,12 @@ setToggleAccessible(toSlider);
 fromSlider.oninput = () => 
 {
   controlFromSlider(fromSlider, toSlider);
-  UpdateSliderSelection();
+  update_slider_range();
   UpdateDrawPoints();
 }
 toSlider.oninput = () => 
 {
   controlToSlider(fromSlider, toSlider);
-  UpdateSliderSelection();
+  update_slider_range();
   UpdateDrawPoints();
 }

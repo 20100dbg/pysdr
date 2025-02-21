@@ -1,5 +1,5 @@
 import gevent
-import helper
+from helper import *
 import json
 import sqlite3
 import sx126x
@@ -20,7 +20,6 @@ def main():
     #Retrieve previous data about modules and detections
     cursor.execute("SELECT module_id, dt, frq FROM detection")
     detections = cursor.fetchall()
-    print(detections)
 
     cursor.execute("SELECT id, frq_start, frq_end, threshold FROM module")
     modules = cursor.fetchall()
@@ -104,8 +103,8 @@ def set_nb_module(nb):
     cursor.execute(f'DELETE FROM module')
     db.commit()
     
-    #id frq_start frq_end threshold latitude longitude last_config last_ping config_applied
-    data = [(module_id, 400, 420, 0, 0, 0, 0, True) for module_id in range(1, nb_module+1)]
+    #id frq_start frq_end threshold latitude longitude last_ping config_applied
+    data = [(module_id, 400, 420, -10, 0, 0, 0, True) for module_id in range(1, nb_module+1)]
     cursor.executemany("INSERT INTO module VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data)
     db.commit()
 
@@ -134,19 +133,22 @@ def get_time():
     return 0
 
 
-def callback_lora(data):
+def callback_lora():
     """ Handles every message received from LoRa """
 
-    global lora
+    #global lora
 
     while True:
         data = lora.receive()
         
-        if len(data) >= HEADER_SIZE:
+        if data and len(data) >= HEADER_SIZE:
 
-            (msg_type, msg_id, msg_from) = extract_header(data)
+            msg_type, msg_id, msg_from = extract_header(data)
             payload = data[HEADER_SIZE:]
             current_dt = get_time()
+
+            print(f"received : {bytes_to_str(data)}")
+            print(f"type={msg_type} id={msg_id} from={msg_from} payload={bytes_to_str(payload)}")
 
             #A module detected something
             if msg_type == MsgType.FRQ.value:
@@ -181,7 +183,7 @@ def callback_lora(data):
                     db.commit()
                     socketio.emit('got_pong', msg_from)
 
-            time.sleep(0.01)
+        time.sleep(0.1)
 
 
 #Entry point
@@ -205,9 +207,10 @@ local_address = 0
 time_setup = False
 local_msg_id = 0
 
-global lora
-lora = sx126x.sx126x(channel=channel,address=local_address,network=0, tx_power=22, 
-                    air_data_rate=air_data_rate, sub_packet_size=32)
+#global lora
+lora = sx126x.sx126x(port="/dev/ttyS0", debug=True)
+lora.set_config(channel=channel, logical_address=local_address, network=0, tx_power=22, 
+                air_data_rate=air_data_rate, sub_packet_size=32)
 
 t_receive = threading.Thread(target=callback_lora)
 t_receive.start()

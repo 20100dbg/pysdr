@@ -1,39 +1,12 @@
 let map, heatmapLayer;
 let tabCouchesDessin = [];
 
-let startDate = 0, endDate = 0;
-let startSpan = 0, endSpan = 0;
-let sliderSpan = 100;
 
-let typeCoord = "mgrs";
+let carto_min_date = 0, carto_max_date = 0;
+let carto_start_range = 0, carto_end_range = 0;
+let carto_coord_type = "mgrs";
 
-
-////////
-let modules = {
-  '1': {'lat':48.88888, 'lng': 7.90017},
-  '2': {'lat':48.89113, 'lng': 7.96126},
-  '3': {'lat':48.88594, 'lng': 7.99696}
-};
-
-let detections = [
-  {'module_id': 1, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557211000 },
-  {'module_id': 2, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557222000 },
-  {'module_id': 3, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557233000 },
-  {'module_id': 2, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557242000 },
-  {'module_id': 2, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557244000 },
-  {'module_id': 2, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557246000 },
-  {'module_id': 2, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557248000 },
-  {'module_id': 1, 'frq': 415.5, 'pwr': -20, 'gdh': 1739557255000 }
-];
-
-function zou() {
-  ImportModules(modules);
-  ImportDetections(detections);
-}
-
-
-
-var heatmapcfg = {
+let heatmapcfg = {
   "radius": 30,
   "maxOpacity": .7,
   "scaleRadius": false,
@@ -43,24 +16,23 @@ var heatmapcfg = {
 };
 
 
-/////////
 
+function get_windows_width() {
+  //return 500;
+  return window.innerWidth - 30;
+}
 
 function resizeWindow()
 {
-  var largeur = window.innerWidth - 20;
+  let largeur = get_windows_width();
   document.getElementById("fromSlider").style.width = largeur + 'px';
   document.getElementById("toSlider").style.width = largeur + 'px';
-  InitBandeau(largeur);
-  FillBandeau(detections);
+  bandeau_init(detections);
 }
 
 window.onresize = function() { resizeWindow(); }
 
-window.onload = function() {
-
-  resizeWindow();
-
+function carto_init() {
 
   var URL_CARTO = "../tiles"; //dossier local
   //var URL_CARTO = "https://{s}.tile.openstreetmap.org"; //carto online
@@ -100,5 +72,5 @@ window.onload = function() {
     //LatLongToMGRS(obj.latlng.lat, obj.latlng.lng);
   });
 
-
-};
+  resizeWindow();
+}

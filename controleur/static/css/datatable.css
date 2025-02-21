@@ -8,7 +8,7 @@
 
 .datatable-top,
 .datatable-bottom {
-	padding: 8px 10px;
+	padding: 2px 4px; /* 8px 10px */
 }
 
 .datatable-top > nav:first-child,
@@ -30,7 +30,7 @@
 }
 
 .datatable-input {
-	padding: 6px 12px;
+	/* padding: 6px 12px; */
 }
 
 .datatable-info {
@@ -121,24 +121,25 @@
 .datatable-table > thead > tr > td,
 .datatable-table > thead > tr > th {
 	vertical-align: top;
-	padding: 8px 10px;
+	padding: 2px 4px; /* 8px 10px */
+	text-align: center;
 }
 
 .datatable-table > thead > tr > th {
 	vertical-align: bottom;
-	text-align: left;
+	text-align: center;
 	border-bottom: 1px solid #d9d9d9;
 }
 
 .datatable-table > tfoot > tr > th {
 	vertical-align: bottom;
-	text-align: left;
+	text-align: center;
 	border-top: 1px solid #d9d9d9;
 }
 
 .datatable-table th {
 	vertical-align: bottom;
-	text-align: left;
+	text-align: center;
 }
 
 .datatable-table th a {
@@ -231,4 +232,13 @@ table.datatable-table:focus tr.datatable-cursor > td:first-child {
 table.datatable-table:focus {
 	outline: solid 1px black;
     outline-offset: -1px;
+}
+
+
+.row-even {
+	background-color: #ffffff;
+}
+
+.row-odd {
+	background-color: #dedede;
 }

@@ -4,22 +4,22 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     
-    <script src="/static/js/socket.io.js"></script>
+    <script src="../static/js/socket.io.js"></script>
 
     <!-- Controller -->
-    <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="stylesheet" href="../static/css/main.css" />
 
     <!-- Datatable -->
-    <link rel="stylesheet" href="/static/css/datatable.css" >
+    <link rel="stylesheet" href="../static/css/datatable.css" >
 
     <!-- Carto -->
-    <link rel="stylesheet" href="/static/css/carto.css" />
-    <link rel="stylesheet" href="/static/css/slider.css" />
-    <link rel="stylesheet" href="/static/css/leaflet.css" />
-    <link rel="stylesheet" href="/static/css/leaflet-coordinates.css" />
+    <link rel="stylesheet" href="../static/css/carto.css" />
+    <link rel="stylesheet" href="../static/css/slider.css" />
+    <link rel="stylesheet" href="../static/css/leaflet.css" />
+    <link rel="stylesheet" href="../static/css/leaflet-coordinates.css" />
 
     
-    <link rel="icon" href="/static/favicon.ico" />
+    <link rel="icon" href="../static/favicon.ico" />
     <title>Gestion capteurs</title>
   </head>
   <body>
@@ -63,38 +63,19 @@
   <button onclick="set_nb_module();">Valider</button>
 </div>
 
-<br>
-<button onclick="toggle_tab('modules');">Capteurs</button>
+<button onclick="toggle_tab('viewer');">Carto</button>
 <button onclick="toggle_tab('detections');">Détections</button>
-<button onclick="toggle_tab('advanced');">Avancé</button>
-<button onclick="toggle_tab('table');">Table</button>
-<button onclick="toggle_tab('carto');">Carto</button>
+<button onclick="toggle_tab('modules');">Capteurs</button>
+<button onclick="toggle_tab('config');">Config</button>
+
 
 <div class="container" id="container">
 
-  <div id="tab_detections">
-    <div id="log_detections" class="log_detections"></div>
-  </div>
-
-  <div id="tab_modules" style="display: none;">    
-  </div>
-
-  <div id="tab_advanced" style="display: none;">
-    <button onclick="download_csv();">Télécharger CSV</button>
-    <br><br>
-    <button onclick="reset_db();">Reset BDD</button>
-  </div>
-
-  <div id="tab_table" style="display: none;">
-    <table id="myTable" class="display"></table>
-    <button onclick="get_search_results();">Update carto</button>
-  </div>
-
-  <div id="tab_carto" style="display: none;">
+  <div id="tab_viewer">
 
     <div id="map"></div>
 
-    <div id="containerslider">
+    <div id="container_slider">
       <div class="container_tooltip">
         <span id="fromSliderTooltip" class="tooltip from"></span>
         <span id="toSliderTooltip" class="tooltip to"></span>
@@ -106,28 +87,57 @@
       <canvas id="bandeau" width="600" height="20" style="border:1px solid #eeeeee;"></canvas>
     </div>
 
+    <table id="myTable" class="display"></table>
+    <button onclick="get_search_results();">Update carto</button>
+
   </div>
+
+
+  <div id="tab_history" style="display: none;">
+    <div id="log_detections" class="log_detections"></div>
+  </div>
+
+
+  <div id="tab_modules" style="display: none;">    
+  </div>
+
+  <div id="tab_config" style="display: none;">
+    <button onclick="download_csv();">Télécharger CSV</button>
+    <br><br>
+    <button onclick="reset_db();">Reset BDD</button>
+  </div>
+
 
 </div>
 
-<!-- Controller -->
-<script src="/static/js/controller.js"></script>
+<script type="text/javascript">
+  /*
+  let detections = {{detections}};
+  let modules = {{modules}};
+  */
+  let detections = [];
+  let modules = {};
+</script>
+
 
 <!-- Datatable -->
-<script src="/static/js/datatable.js"></script>
-<script src="/static/js/easypick.js"></script>
-<script src="/static/js/datatable_user.js"></script>
+<script src="../static/js/datatable.js"></script>
+<script src="../static/js/easypick.js"></script>
+<script src="../static/js/datatable_init.js"></script>
 
 <!-- Carto -->
-<script src="/static/js/leaflet.js"></script>
-<script src="/static/js/leaflet-coordinates.js"></script>
-<script src="/static/js/leaflet-heatmap.js"></script>
-<script src="/static/js/slider.js"></script>
-<script src="/static/js/bandeau.js"></script>
-<script src="/static/js/carto.js"></script>
-<script src="/static/js/carto_init.js"></script>
-<script src="/static/js/carto_import.js"></script>
-<script src="/static/js/carto_dessin.js"></script>
+<script src="../static/js/leaflet.js"></script>
+<script src="../static/js/leaflet_coordinates.js"></script>
+<script src="../static/js/leaflet_heatmap.js"></script>
 
+<script src="../static/js/carto_slider.js"></script>
+<script src="../static/js/carto_bandeau.js"></script>
+<script src="../static/js/carto_layer.js"></script>
+<script src="../static/js/carto_import.js"></script>
+<script src="../static/js/carto_dessin.js"></script>
+<script src="../static/js/carto_init.js"></script>
+
+<!-- Main -->
+<script src="../static/js/main.js"></script>
   </body>
 </html>

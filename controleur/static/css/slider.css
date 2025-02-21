@@ -62,7 +62,8 @@ input[type="range"] {
 }
 
 .container_tooltip {
-  margin-bottom: 25px;
+  margin-bottom: 15px;
+  height: 20px;
 }
 
 .tooltip {

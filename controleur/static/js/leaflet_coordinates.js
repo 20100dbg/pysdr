@@ -73,7 +73,7 @@ L.Control.Coordinates = L.Control.extend({
 		}
 
 		if (obj.latlng) {
-			if (typeCoord == 'mgrs')
+			if (carto_coord_type == 'mgrs')
 			{
 				L.DomUtil.get(this._lat).innerHTML = LatLongToMGRS(obj.latlng.lat, obj.latlng.lng);
 				L.DomUtil.get(this._lng).innerHTML = '';

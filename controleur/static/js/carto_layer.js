@@ -4,8 +4,6 @@ function onClick(e) {
     alert(this.getLatLng());
 }
 
-
-
 function SupprimerCouchesDessin()
 {
     for (let i = 0; i < tabCouchesDessin.length; i++) tabCouchesDessin[i].layer.remove();
@@ -17,7 +15,7 @@ function ToutVider()
   SupprimerCouchesDessin();
   ViderBandeau();
   
-  startDate = endDate = 0;
+  carto_min_date = carto_max_date = 0;
   tabCouchesDessin = [];
 }
 
@@ -79,7 +77,7 @@ function CentrerVue(tabPoints)
 function ResetSlider()
 {
   fromSlider.value = 0;
-  toSlider.value = sliderSpanInit;
+  toSlider.value = 100;
   fillSlider(fromSlider, toSlider, '#C6C6C6', '#25daa5', toSlider);
 }
 

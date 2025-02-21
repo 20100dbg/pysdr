@@ -70,7 +70,7 @@ class scanner:
 
     def log(self, data):
         with open("log", "a") as f:
-            f.write(data)
+            f.write(data + "\n")
 
 
     def clean_frq(self, frq, step=5):

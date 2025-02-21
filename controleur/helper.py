@@ -12,12 +12,6 @@ class MsgType(Enum):
 HEADER_SIZE = 3
 
 
-def pretty_frq(frq):
-    strfrq = str(frq/1000000)
-    strfrq = strfrq.ljust(7, '0')
-    return strfrq + 'M'
-
-
 def clean_frq(self, frq, step=5):
     if not isinstance(frq, float): frq = float(frq)
     frq = frq * 1000
@@ -49,7 +43,7 @@ def extract_header(data):
     
     return (data[0],                  #msg_type
             bytes_to_int(data[1:2]),  #msg_id
-            bytes_to_int(data[2:3])), #msg_from
+            bytes_to_int(data[2:3]))  #msg_from
 
 
 def build_message(msg_type, msg_id, msg_from, data=b''):
@@ -68,3 +62,7 @@ def increment_msg_id():
     local_msg_id += 1
     if local_msg_id == 256:
         local_msg_id = 0
+
+def bytes_to_str(arr):
+    return ' '.join(['{:02X}'.format(b) for b in arr])
+    
