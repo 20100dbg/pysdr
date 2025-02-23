@@ -10,7 +10,10 @@ type de messages
 - récupérer le niveau de batterie
 
 
-
+import module/detection -> ajout tableau/objet 
+                        -> ajout carto
+                        -> ajout bandeau / slider
+                        -> ajout datatable
 
 
 location /tiles/ {

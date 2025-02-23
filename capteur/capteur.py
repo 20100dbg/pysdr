@@ -142,7 +142,6 @@ def receive_lora():
 def callback_scanner(frq, pwr):
     """ Handles frequencies detection from scanner """
 
-    print(f"got activity ! {frq} / {pwr}")
     frq = clean_frq(frq, step=25)
     send = True
 

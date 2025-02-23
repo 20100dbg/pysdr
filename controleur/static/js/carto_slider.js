@@ -51,13 +51,21 @@ setToggleAccessible(toSlider);
 
 fromSlider.oninput = () => 
 {
+  //get slider values
   controlFromSlider(fromSlider, toSlider);
   update_slider_range();
+
+  //re-draw stuff
   UpdateDrawPoints();
+  draw_heatmap(detections);
 }
 toSlider.oninput = () => 
 {
+  //get slider values
   controlToSlider(fromSlider, toSlider);
   update_slider_range();
+
+  //re-draw stuff
   UpdateDrawPoints();
+  draw_heatmap(detections);
 }

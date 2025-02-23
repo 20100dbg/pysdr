@@ -1,6 +1,6 @@
 let map, heatmapLayer;
 let tabCouchesDessin = [];
-
+let sliderSpan = 100;
 
 let carto_min_date = 0, carto_max_date = 0;
 let carto_start_range = 0, carto_end_range = 0;
