@@ -1,15 +1,16 @@
 function carto_import_modules(_modules)
 {
-  for (module_id in _modules) {
-    draw_point([_modules[module_id].lat, _modules[module_id].lng], module_id);
+  for (module_id in _modules)
+  {
+    let layer = draw_point([_modules[module_id].lat, _modules[module_id].lng], {"module_id": module_id});
+    modules_layers.push(layer);
   }
 }
 
 
 function carto_import_detections(_detections)
-{
-  
-  draw_heatmap(detections);
+{  
+  //draw_heatmap(detections);
 }
 
 

@@ -1,7 +1,18 @@
 
-function onClick(e) {
-    console.log(e);
-    alert(this.getLatLng());
+function on_click_module(e) {
+    let module_id = e.target.options.data.module_id;
+    let module_layer = get_module_layer(module_id);
+
+    let label = "";
+    let nb_detections_max = 3;
+    let nb_detections = 0;
+
+    for (let i = 0; i < detections.length; i++) {
+      if (detections[i].module_id == module_id && nb_detections++ < nb_detections_max) {
+        label += pretty_frq(detections[i].frq) + "<br>";
+      }
+    }
+    add_tooltip(module_layer, label, 5);
 }
 
 function SupprimerCouchesDessin()

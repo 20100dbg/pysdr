@@ -16,6 +16,8 @@ import module/detection -> ajout tableau/objet
                         -> ajout datatable
 
 
+
+
 location /tiles/ {
     autoindex on;
     alias /home/rpi/dia/tiles/;

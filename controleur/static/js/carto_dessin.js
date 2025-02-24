@@ -1,12 +1,31 @@
-function draw_point(coordPoint, data = {}, taille = 4, couleur = "#000000", label = '')
+function draw_point(coordPoint, data = {}, taille = 4, couleur = "#000000")
 {
 
-  let layer = L.circleMarker(coordPoint, {radius: taille, stroke:true, 
-      color: couleur, weight:1, fill: true, fillColor: couleur, fillOpacity: 1,
-      mydata: 'hi there'}).addTo(map).on('click', onClick);
+  let layer = L.circleMarker(coordPoint, {
+      data: data, radius: taille, stroke:true, 
+      color: couleur, weight:1, fill: true, 
+      fillColor: couleur, fillOpacity: 1}).addTo(map).on('click', on_click_module);
+  return layer;
+}
 
-  label = "" +label;
-  if (label != '') layer.bindTooltip(label, {permanent:true, opacity: 0.6, className: 'tooltip'}).openTooltip();
+function add_tooltip(layer, label, timeout=0) {
+  
+  layer.bindTooltip(label.toString(), {permanent:true, opacity: 0.6, className: 'tooltip'}).openTooltip();
+
+  if (timeout > 0) {
+    setTimeout(function () {
+      layer.closeTooltip();
+    }, timeout * 1000);
+  }
+}
+
+
+function get_module_layer(module_id) {
+  for (var i = 0; i < modules_layers.length; i++) {
+    if (modules_layers[i].options.data.module_id == module_id)
+      return modules_layers[i];
+  }
+  return null;
 }
 
 
@@ -36,6 +55,7 @@ function draw_heatmap(tabPointsHeatmap)
 
 function UpdateDrawPoints(points)
 {
+  /*
   for (let i = 0; i < tabCouchesDessin.length; i++) {
     if (tabCouchesDessin[i].dt >= carto_start_range && tabCouchesDessin[i].dt <= carto_end_range) {
       if (!tabCouchesDessin[i].shown) {
@@ -50,6 +70,7 @@ function UpdateDrawPoints(points)
       }
     }
   }
+  */
 }
 
 

@@ -1,4 +1,4 @@
-//const socket = io();
+const socket = io();
 let nb_module = 0;
 //helpers
 
@@ -7,7 +7,7 @@ function date_fr() {
   dateObj.toLocaleDateString('fr-fr') + ' ' + dateObj.toTimeString().substring(0,8);   
 }
 
-function date_standard() {
+function date_utc() {
   let dateObj = new Date();
   dateObj.toISOString().replace('T',' ').substring(0,19);
 }
@@ -16,13 +16,13 @@ function is_undefined(some_var) {
   return (typeof some_var === 'undefined');
 }
 
-function pretty_gdh(timestamp) {
+function pretty_dt(timestamp) {
   return new Date(timestamp).toLocaleString();
 }
 
 function pretty_frq(frq) {
 
-  frq = frq.toString(); // (frq / 1000000).toString();
+  frq = (frq / 1000).toString();
   tab = frq.split('.');
   left = tab[0].padStart(3, '0');
   right = (tab.length == 1) ? "000" : tab[1].substring(0,3).padEnd(3, '0');
@@ -31,6 +31,8 @@ function pretty_frq(frq) {
 
 //helpers
 
+let carto_min_date = 0, carto_max_date = 0;
+let carto_start_range = 0, carto_end_range = 0;
 
 let default_frq_start = 400;
 let default_frq_end = 420;
@@ -44,14 +46,14 @@ let test_modules = {
 };
 
 let test_detections = [
-  {'module_id': '1', 'frq': 400.500, 'pwr': -15, 'dt': 1739557211000 },
-  {'module_id': '2', 'frq': 410.250, 'pwr': -7, 'dt': 1739557222000 },
-  {'module_id': '3', 'frq': 405.800, 'pwr': -10, 'dt': 1739557233000 },
-  {'module_id': '2', 'frq': 412.100, 'pwr': -18, 'dt': 1739557242000 },
-  {'module_id': '2', 'frq': 405.500, 'pwr': -16, 'dt': 1739557244000 },
-  {'module_id': '2', 'frq': 407.500, 'pwr': -22, 'dt': 1739557246000 },
-  {'module_id': '2', 'frq': 402.350, 'pwr': -30, 'dt': 1739557248000 },
-  {'module_id': '1', 'frq': 415.500, 'pwr': -20, 'dt': 1739557255000 }
+  {'module_id': '1', 'frq': 400500, 'pwr': -15, 'dt': 1739547111000 },
+  {'module_id': '2', 'frq': 410250, 'pwr': -7, 'dt':  1739547222000 },
+  {'module_id': '3', 'frq': 405800, 'pwr': -10, 'dt': 1739557233000 },
+  {'module_id': '2', 'frq': 412100, 'pwr': -18, 'dt': 1739557342000 },
+  {'module_id': '2', 'frq': 405500, 'pwr': -16, 'dt': 1739568444000 },
+  {'module_id': '2', 'frq': 407500, 'pwr': -22, 'dt': 1739568546000 },
+  {'module_id': '2', 'frq': 402350, 'pwr': -30, 'dt': 1739568648000 },
+  {'module_id': '1', 'frq': 415500, 'pwr': -20, 'dt': 1739578755000 }
 ];
 
 
@@ -71,23 +73,24 @@ function import_detections(_detections) {
   for (let i = 0; i < _detections.length; i++) {
     //module_id, dt, frq, pwr
 
-    let dt = new Date(_detections[i]['dt']);
-    dt = dt.toISOString().replace('T',' ').substring(0,19);
+    let readable_dt = pretty_dt(_detections[i]['dt']);
     
     //preparation datatable
-    data.push([_detections[i]['module_id'], dt, _detections[i]['frq'], _detections[i]['pwr']])
+    data.push([_detections[i]['module_id'], readable_dt, _detections[i]['frq'] / 1000, _detections[i]['pwr']])
 
     //DOM
-    add_detection_dom(_detections[i]['module_id'], dt, _detections[i]['frq'], _detections[i]['pwr']);
+    add_detection_dom(_detections[i]['module_id'], readable_dt, _detections[i]['frq'], _detections[i]['pwr']);
   }
   
   //datatable
   datatable_import(data);
 
   //ajout objet
-  detections.concat(_detections);
+  detections = detections.concat(_detections);
 
   update_slider_range();
+
+  draw_heatmap(detections);
   bandeau_init(detections);
 }
 
@@ -130,6 +133,7 @@ function add_module(lat, lng, frq_start, frq_end, threshold, last_ping, config_a
 
 })();
 
+
 function main_init() {
 
   for (var i = 0; i < detections.length; i++) {
@@ -164,7 +168,7 @@ function reset_db() {
 
 
 //sockets
-/*
+
 function send_reset_db() {
   show_loader(0.5);
   socket.emit("reset_db", {});
@@ -185,7 +189,7 @@ function send_config_module(module_id, frq_start, frq_end, threshold) {
   socket.emit("config", {'module_id': module_id, 'frq_start': frq_start, 'frq_end': frq_end, 'threshold': threshold});
 }
 
-/*
+
 socket.on("connect", () => {
   update_etat(true);
   socket.emit("set_time", Date.now());
@@ -205,26 +209,33 @@ socket.on("got_pong", function(module_id) {
 });
 
 socket.on("got_frq", function(params) {
-  module_id = params['module_id'];
-  current_dt = params['current_dt']; //seconds
-  frq = params['frq'];
 
-  import_detections([params["module_id"], params["dt"], params["frq"], params["pwr"]])
-  add_detection_dom(module_id, current_dt, frq);
-  pop_error("C" + module_id + " - " + pretty_frq(frq));
+  params['dt'] = params['dt'] * 1000;
+  let frq = pretty_frq(params['frq']);
+  import_detections([params]);
+
+  //deja fait dans import_detections()
+  //add_detection_dom(params['module_id'], params['dt'], params['frq'], params["pwr"]);
+
+  //récuperer la layer pour params['module_id']
+  
+  let module_layer = get_module_layer(params['module_id']);
+  add_tooltip(module_layer, frq, 5);
+  
+  pop_error("C" + params['module_id'] + " - " + frq);
 });
 
 
-*/
+
 
 // interface
 
-function add_detection_dom(module_id, dt, frq, pwr) {
+function add_detection_dom(module_id, readable_dt, frq, pwr) {
 
   let log_detections = document.getElementById('log_detections');
 
   const tpl = document.createElement('template');
-  log_row = pretty_gdh(dt) + " - C" + module_id + " - " + pretty_frq(frq);
+  log_row = readable_dt + " - C" + module_id + " - " + pretty_frq(frq);
   tpl.innerHTML = '<span class="log_row">'+ log_row +'</span>'
 
   log_detections.appendChild(tpl.content.firstChild);

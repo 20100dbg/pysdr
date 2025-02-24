@@ -1,9 +1,9 @@
 let map, heatmapLayer;
-let tabCouchesDessin = [];
+let modules_layers = [];
+let detections_layers = [];
 let sliderSpan = 100;
 
-let carto_min_date = 0, carto_max_date = 0;
-let carto_start_range = 0, carto_end_range = 0;
+
 let carto_coord_type = "mgrs";
 
 let heatmapcfg = {
@@ -69,7 +69,10 @@ function carto_init() {
   //détection du clic
   map.on('contextmenu', function (e) { 
     console.log(e.latlng);
-    //LatLongToMGRS(obj.latlng.lat, obj.latlng.lng);
+  });
+
+  map.on('click', function (e) { 
+    console.log("click event on map");
   });
 
   resizeWindow();

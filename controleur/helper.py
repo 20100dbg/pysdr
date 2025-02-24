@@ -56,13 +56,6 @@ def build_message(msg_type, msg_id, msg_from, data=b''):
     msg += data
     return msg
 
-
-def increment_msg_id():
-    global local_msg_id
-    local_msg_id += 1
-    if local_msg_id == 256:
-        local_msg_id = 0
-
 def bytes_to_str(arr):
     return ' '.join(['{:02X}'.format(b) for b in arr])
     

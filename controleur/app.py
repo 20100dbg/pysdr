@@ -11,7 +11,7 @@ from flask import Flask, request, make_response
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins='*',async_mode='gevent')
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode='gevent')
 
 @app.route("/")
 def main():
@@ -61,7 +61,7 @@ def download():
 @socketio.on('config')
 def config(params):
     """ Receive config update for a module"""
-
+    global local_msg_id
     module_id = int(params['module_id'])
     frq_start = int(params['frq_start'])
     frq_end = int(params['frq_end'])
@@ -76,6 +76,8 @@ def config(params):
 
     #Send config to module via LoRa
     data = bytes_to_int(frq_start, 2) + bytes_to_int(frq_end, 2) + bytes_to_int(threshold, 1)
+
+    add_history(MsgType.CONF.value, local_msg_id, module_id)
     lora.send_bytes(build_message(MsgType.CONF.value, local_msg_id, module_id, data))
     increment_msg_id()
 
@@ -112,6 +114,9 @@ def set_nb_module(nb):
 @socketio.on('ping')
 def ping(module_id):
     """ Send PING to module"""
+    global local_msg_id
+    module_id = int(module_id)
+    add_history(MsgType.PING.value, local_msg_id, module_id)
     lora.send_bytes(build_message(MsgType.PING.value, local_msg_id, module_id))
     increment_msg_id()
 
@@ -163,8 +168,9 @@ def callback_lora():
             elif msg_type == MsgType.ACK.value:
                 
                 #check history
+                original_msg_type = get_history(msg_id, msg_from)
 
-                if original_msg_type == MsgType.CONF.value:
+                if original_msg_type == MsgType.CONF_SCAN.value:
 
                     cursor.execute(f"SELECT frq_start, frq_end, threshold FROM module WHERE id={msg_from}")
                     module = cursor.fetchone()
@@ -176,6 +182,8 @@ def callback_lora():
                         cursor.execute(f'UPDATE module SET config_applied=true WHERE id={msg_from}')
                         socketio.emit('got_config_ack', msg_from)
 
+                elif original_msg_type == MsgType.CONF_LORA.value:
+                    pass
 
                 elif original_msg_type == MsgType.PING.value:
 
@@ -184,6 +192,24 @@ def callback_lora():
                     socketio.emit('got_pong', msg_from)
 
         time.sleep(0.1)
+
+
+def add_history(msg_type, msg_id, msg_to):
+    global history
+    history.append({"msg_id": msg_id, "msg_type": msg_type, "msg_to": msg_to})
+
+def get_history(msg_id, msg_to):
+    for h in history:
+        if h["msg_id"] == msg_id and h["msg_to"] == msg_to:
+            return h["msg_type"]
+
+    return None
+
+def increment_msg_id():
+    global local_msg_id
+    local_msg_id += 1
+    if local_msg_id == 256:
+        local_msg_id = 0
 
 
 #Entry point
@@ -198,8 +224,9 @@ with open('script.sql', 'r') as f:
     db.commit()
 
 
-global nb_module
+global nb_module, history
 nb_module = 0
+history = []
 channel = 18
 air_data_rate = 0.3
 local_address = 0

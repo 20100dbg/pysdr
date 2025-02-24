@@ -127,13 +127,11 @@ function get_search_results() {
         carto_import_detections(detections);
     }
     else {
-        console.log(tab_row_idx);
         let data = [];
         for (let i = 0; i < tab_row_idx.length; i++) {
             let idx_row = tab_row_idx[i];
             data.push(detections[idx_row]);
         }
-        console.log(data);
         carto_import_detections(data);
     }
 }

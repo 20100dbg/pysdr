@@ -47,7 +47,7 @@ def bytes_to_int(b):
 def build_key_history(msg):
     """ Create a dictionnary key based on header data """
 
-    (msg_type, msg_id, msg_from) = extract_header(msg)
+    msg_type, msg_id, msg_from = extract_header(msg)
     return str(msg_from) + '-' + str(msg_id)
 
 
@@ -56,7 +56,7 @@ def extract_header(data):
     
     return (data[0],                  #msg_type
             bytes_to_int(data[1:2]),  #msg_id
-            bytes_to_int(data[2:3])), #msg_from
+            bytes_to_int(data[2:3])) #msg_from
 
 
 def build_message(msg_type, msg_id, msg_from, data=b''):
