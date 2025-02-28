@@ -101,32 +101,7 @@ void ensure_positive_arg(std::list<TCLAP::ValueArg<T>*> list) {
 Params::Params(int argc, char** argv) {
   try {
     TCLAP::CmdLine cmd("Obtain power spectrum from RTL device using FFTW library.", ' ', "1.0-beta2");
-    /*
-    TCLAP::ValueArg<int> arg_buffers("","buffers","Number of read buffers (don't touch unless running out of memory).",false,buffers,"buffers");
-    cmd.add( arg_buffers );
-    TCLAP::ValueArg<std::string> arg_window("w","window","Use window function, from file or stdin.",false,"","file|-");
-    cmd.add( arg_window );
-    TCLAP::ValueArg<std::string> arg_integration_time("t","time","Integration time (incompatible with -n).",false,"","seconds");
-    cmd.add( arg_integration_time );
-    TCLAP::SwitchArg arg_strict_time("T","strict-time","End measurement when the time set with --time option is up, regardless of gathered samples.",strict_time);
-    cmd.add( arg_strict_time );
-    TCLAP::ValueArg<int> arg_bufferlen("s","buffer-size","Size of read buffers (leave it unless you know what you are doing).", false, buf_length, "bytes");
-    cmd.add( arg_bufferlen );
-    TCLAP::SwitchArg arg_quiet("q","quiet","Limit verbosity.", talkless);
-    cmd.add( arg_quiet );
-    TCLAP::ValueArg<double> arg_min_overlap("o","overlap","Define lower boundary for overlap when frequency hopping (otherwise meaningless).",false, min_overlap, "percent");
-    cmd.add( arg_min_overlap );
-    TCLAP::ValueArg<std::string> arg_matrixMode("m","matrix","Will output data in binary matrix format plus separate metadata text file",false,"","filename (without extension)");
-    cmd.add( arg_matrixMode );
-    TCLAP::SwitchArg arg_linear("l","linear","Calculate linear power values instead of logarithmic.", linear);
-    cmd.add( arg_linear );
-    TCLAP::ValueArg<std::string> arg_session_duration("e","elapsed","Scan session duration.",false,"","seconds");
-    cmd.add( arg_session_duration );
-    TCLAP::ValueArg<std::string> arg_baseline("B","baseline","Subtract baseline, read baseline data from file or stdin.",false,"","file|-");
-    cmd.add( arg_baseline );
-    TCLAP::SwitchArg arg_continue("c","continue","Repeat the same measurement endlessly.", endless);
-    cmd.add( arg_continue );
-    */
+
     TCLAP::ValueArg<int> arg_rate("r","rate","Sample rate of the receiver.",false,sample_rate,"samples/s");
     cmd.add( arg_rate );
     TCLAP::ValueArg<int> arg_ppm("p","ppm","Set custom ppm error in RTL-SDR device.", false, ppm_error, "ppm");
@@ -157,16 +132,6 @@ Params::Params(int argc, char** argv) {
     gain = arg_gain.getValue() * 10;
     sample_rate = arg_rate.getValue();
     threshold = arg_threshold.getValue();
-    /*
-    buffers = arg_buffers.getValue();
-    linear = arg_linear.getValue();
-    buf_length = arg_bufferlen.getValue();
-    endless = arg_continue.getValue();
-    talkless = arg_quiet.getValue();
-    strict_time = arg_strict_time.getValue();
-    min_overlap = arg_min_overlap.getValue();
-    */
-    //clipped_output_isSet = arg_clipped.getValue();
 
     // Due to USB specifics, buffer length for reading rtl_sdr device
     // must be a multiple of 16384. We have to keep it that way.
@@ -222,56 +187,6 @@ Params::Params(int argc, char** argv) {
     else
       repeats = buf_length/(2*N);
     
-    /*
-    if (arg_integration_time.isSet()) {
-      integration_time = parse_time(arg_integration_time.getValue());
-      if (integration_time <= 0) {
-        throw RPFexception(
-          "Could not parse the value given to --time. Expecting format [WdXhYm]Z[s]. Exiting.",
-          ReturnValue::InvalidArgument);
-      }
-      integration_time_isSet = true;
-    }
-    //Integration time
-    if (arg_integration_time.isSet() + arg_repeats.isSet() > 1) {
-      throw RPFexception(
-        "Options -n and -t are mutually exclusive. Exiting.",
-        ReturnValue::InvalidArgument);
-    }
-    if (arg_strict_time.isSet() && !arg_integration_time.isSet()) {
-      std::cerr << "Warning: option --strict-time has no effect without --time." << std::endl;
-      strict_time = false;
-    }
-    //Optimally adjust buffer length for small sample sizes only if buffer length is not user defined.
-    if (arg_bufferlen.isSet()) {
-      buf_length_isSet = true;
-    }
-    baseline = arg_baseline.isSet();
-    if (baseline)
-      baseline_file = arg_baseline.getValue();
-
-    window = arg_window.isSet();
-    if (window)
-      window_file = arg_window.getValue();
-
-    matrixMode = arg_matrixMode.isSet();
-    if (matrixMode) {
-      matrix_file = arg_matrixMode.getValue();
-      bin_file = matrix_file + ".bin";
-      meta_file = matrix_file + ".met";
-    }
-
-    if (arg_session_duration.isSet()) {
-      session_duration = parse_time(arg_session_duration.getValue());
-      if (session_duration <= 0) {
-        throw RPFexception(
-          "Could not parse the value given to --time. Expecting format [WdXhYm]Z[s]. Exiting.",
-          ReturnValue::InvalidArgument);
-      }
-      session_duration_isSet = true;
-    }
-    */
-
   }
   catch (TCLAP::ArgException &e) {
     throw RPFexception(

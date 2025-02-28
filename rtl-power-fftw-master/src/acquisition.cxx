@@ -57,115 +57,12 @@ std::vector<T> read_inputfile(std::istream* stream) {
   }
   return values;
 }
-/*
-AuxData::AuxData(const Params& params) {
-  std::istream* stream;
-  std::ifstream fs;
-  // Window function and baseline correction
-  // If both are read from stdin, we read it all in one go,
-  // and see if the total number of values adds up to what we need.
-  // If so, the first half is window data, and the other half is
-  // baseline data. Window data are floats, as our samples are only
-  // 8-bit anyway, but baseline is double, as we can average a lot of
-  // spectra and gain considerable precision in this manner.
-  if (params.window && params.baseline && params.window_file == "-" && params.baseline_file == "-") {
-    stream = &std::cin;
-    std::cerr << "Reading baseline and window function from stdin." << std::endl;
-    std::vector<double> values = read_inputfile<double>(stream);
-    if ((int)values.size() == 2*params.N) {
-      std::size_t const half_size = window_values.size() / 2;
-      for (std::size_t i=0; i < values.size(); i++) {
-        if ( i < half_size )
-          window_values.push_back((float)values[i]);
-        else
-          baseline_values.push_back(values[i]);
-      }
-      std::cerr << "Succesfully read " << window_values.size() << " window function points." << std::endl;
-      std::cerr << "Succesfully read " << baseline_values.size() << " baseline points." << std::endl;
-    }
-    else {
-      throw RPFexception(
-        "Error reading window function and baseline from stdin. Expected "
-        + std::to_string(2 * params.N) + " values, found "
-        + std::to_string(values.size()) + ".",
-      ReturnValue::InvalidInput);
-    }
-  }
-  // In other scenarios we can safely read window function and
-  // baseline data separately, as there is certainly no clash
-  // on stdin anymore. The reason why we don't read all the data
-  // separately in all cases is the ease with which we test for unsuitable input
-  // data (too many points) if we read all of it and see if there is
-  // just enough data points.
-  else {
-    if (params.window) {
-      if (params.window_file == "-") {
-        std::cerr << "Reading window function from stdin." << std::endl;
-        stream = &std::cin;
-      }
-      else {
-        std::cerr << "Reading window function from file " << params.baseline_file << std::endl;
-        fs.open(params.window_file);
-        if (!fs.good()) {
-          throw RPFexception(
-            "Could not open " + params.window_file + ". Quitting.",
-            ReturnValue::InvalidInput);
-        }
-        stream = &fs;
-      }
-      window_values = read_inputfile<float>(stream);
-      // Check for suitability.
-      if ((int)window_values.size() == params.N) {
-        std::cerr << "Succesfully read " << window_values.size() << " window function points." << std::endl;
-      }
-      else {
-        throw RPFexception(
-          "Error reading window function. Expected " + std::to_string(params.N)
-          + " values, found " + std::to_string(window_values.size()) + ".",
-          ReturnValue::InvalidInput);
-      }
-    }
-    if (params.baseline) {
-      if (params.baseline_file == "-") {
-        std::cerr << "Reading baseline from stdin." << std::endl;
-        stream = &std::cin;
-      }
-      else {
-        std::cerr << "Reading baseline from file " << params.baseline_file << std::endl;
-        fs.open(params.baseline_file);
-        if (!fs.good()) {
-          throw RPFexception(
-            "Could not open " + params.baseline_file + ". Quitting.",
-            ReturnValue::InvalidInput);
-        }
-        stream = &fs;
-      }
-      baseline_values = read_inputfile<double>(stream);
-      // Check for suitability.
-      if ((int)baseline_values.size() == params.N) {
-        std::cerr << "Succesfully read " << baseline_values.size() << " baseline points." << std::endl;
-      }
-      else {
-        throw RPFexception(
-          "Error reading baseline. Expected " + std::to_string(params.N)
-          + " values, found " + std::to_string(baseline_values.size()) + ".",
-          ReturnValue::InvalidInput);
-      }
-    }
-  }
-}
-*/
 
 
 Plan::Plan(Params& params_, int actual_samplerate_) :
   actual_samplerate(actual_samplerate_), params(params_)
 {
   // Calculate the number of repeats according to the true sample rate.
-  /*
-  if (params.integration_time_isSet) {
-    params.repeats = ceil(actual_samplerate * params.integration_time / params.N);
-  }
-  */
 
   // Adjust buffer size
   if (!params.buf_length_isSet) {
@@ -188,6 +85,7 @@ Plan::Plan(Params& params_, int actual_samplerate_) :
     if (hops > 1) {
       int overhang = (int64_t(hops)*actual_samplerate - (params.stopfreq - params.startfreq)) / (hops - 1);
       freqs_to_tune.push_back(params.startfreq + actual_samplerate/2.0);
+
       //Mmmm, thirsty? waah-waaah...
       for (int hop = 1; hop < hops; hop++) {
         freqs_to_tune.push_back(freqs_to_tune.back() + actual_samplerate - overhang);
@@ -202,26 +100,13 @@ Plan::Plan(Params& params_, int actual_samplerate_) :
   }
 }
 
-/*
-void Plan::print() const {
-    std::cerr << "Number of bins: " << params.N << std::endl;
-    std::cerr << "Total number of (complex) samples to collect: " << (int64_t)params.N*params.repeats << std::endl;
-    std::cerr << "Buffer length: " << params.buf_length << std::endl;
-    std::cerr << "Number of averaged spectra: " << params.repeats << std::endl;
-    std::cerr << "Estimated time of measurements: " << (double)params.N * params.repeats / actual_samplerate << " seconds" << std::endl;
-    if (params.strict_time)
-      std::cerr << "Acquisition will unconditionally terminate after " << params.integration_time << " seconds." << std::endl;
-}
-*/
-
 
 Acquisition::Acquisition(const Params& params_,
-                         /*AuxData& aux_,*/
                          Rtlsdr& rtldev_,
                          Datastore& data_,
                          int actual_samplerate_,
                          int64_t freq_) :
-  params(params_), /*aux(aux_),*/ rtldev(rtldev_), data(data_),
+  params(params_), rtldev(rtldev_), data(data_),
   actual_samplerate(actual_samplerate_), freq(freq_)
 { }
 
@@ -233,12 +118,11 @@ void Acquisition::run() {
   // to tune to that same frequency at other times. Such hiccups seem to
   // be rare. We handle them by a naive and stupid, but seemingly effective
   // method of persuasion.
+  
   const int max_tune_tries = 3;
   bool success = false;
   for (int tune_try = 0; !success && tune_try < max_tune_tries; tune_try++)
   {
-    //if( (params.outcnt == 0 && params.talkless) || (params.talkless==false) ) std::cerr << "Tuning to " << freq << " Hz (try " << tune_try + 1 << ")" << std::endl;
-
     try {
       rtldev.set_frequency(freq);
       tuned_freq = rtldev.frequency();
@@ -255,29 +139,11 @@ void Acquisition::run() {
     throw TuneError(freq);
   }
 
-  //if( (params.outcnt == 0 && params.talkless) || (params.talkless==false) ) std::cerr << "\rDevice tuned to: " << tuned_freq << " Hz" << std::flush;
   std::fill(data.pwr.begin(), data.pwr.end(), 0);
   data.acquisition_finished = false;
   data.repeats_done = 0;
 
   std::thread t(&Datastore::fftThread, &data);
-
-  // Record the start-of-acquisition timestamp.
-  /*
-  startAcqTimestamp = currentDateTime();
-  time(&scanBeg);
-  if(cntTimeStamps==0) {
-    firstAcqTimestamp = currentDateTime();
-    cntTimeStamps++;
-  }
-  */
-  //if( (params.outcnt == 0 && params.talkless) || (params.talkless==false) ) std::cerr << "Acquisition started at " << startAcqTimestamp << std::endl;
-
-  // Calculate the stop time. This will only be effective if --strict-time was given.
-  /*
-  using steady_clock = std::chrono::steady_clock;
-  steady_clock::time_point stopTime = steady_clock::now() + std::chrono::milliseconds(int64_t(params.integration_time*1000));
-  */
 
   std::unique_lock<std::mutex>
   status_lock(data.status_mutex, std::defer_lock);
@@ -309,6 +175,7 @@ void Acquisition::run() {
         dataNeeded = params.buf_length;
       }
     }
+
     // Resize the buffer to match the needed amount of data.
     buffer.resize(dataNeeded);
 
@@ -334,26 +201,10 @@ void Acquisition::run() {
       status_lock.unlock();
     }
 
-    /*
-    if (params.strict_time && (steady_clock::now() >= stopTime))
-      break;
-    */
-
     // See if we have been instructed to conclude this measurement immediately.
     if (interrupts && checkInterrupt(InterruptState::FinishNow))
         break;
   }
-
-  // Record the end-of-acquisition timestamp.
-  /*
-  endAcqTimestamp = currentDateTime();
-  time(&scanEnd);
-  lastAcqTimestamp = currentDateTime();
-  sumScanDur = sumScanDur + difftime(scanEnd, scanBeg);
-  avgScanDur = sumScanDur / metaRows;
-  */
-
-  //if( (params.outcnt == 0 && params.talkless) || (params.talkless==false) ) std::cerr << "Acquisition done at " << endAcqTimestamp << std::endl;
 
   status_lock.lock();
   data.acquisition_finished = true;
@@ -362,17 +213,6 @@ void Acquisition::run() {
   t.join();
 }
 
-/*
-void Acquisition::print_summary() const {
-  std::cerr << "Actual number of (complex) samples collected: "
-    << (int64_t)params.N * data.repeats_done << std::endl;
-  std::cerr << "Actual number of device readouts: " << deviceReadouts << std::endl;
-  std::cerr << "Number of successful readouts: " << successfulReadouts << std::endl;
-  std::cerr << "Actual number of averaged spectra: " << data.repeats_done << std::endl;
-  std::cerr << "Effective integration time: " <<
-    (double)params.N * data.repeats_done / actual_samplerate << " seconds" << std::endl;
-}
-*/
 
 void Acquisition::write_data() const {
 
@@ -381,88 +221,24 @@ void Acquisition::write_data() const {
   float fpwrdb = 0.0;
   double freq = 0.0;
 
-/*
-  if(!params.matrixMode) {
-    // Print the header
-    std::cout << "# rtl-power-fftw output" << std::endl;
-    std::cout << "# Acquisition start: " << startAcqTimestamp << std::endl;
-    std::cout << "# Acquisition end: " << endAcqTimestamp << std::endl;
-    std::cout << "#" << std::endl;
-    std::cout << "# frequency [Hz] power spectral density [dB/Hz]" << std::endl;
-  }
-*/
   //Interpolate the central point, to cancel DC bias.
   data.pwr[params.N/2] = (data.pwr[params.N/2 - 1] + data.pwr[params.N/2+1]) / 2;
-
-  // Calculate the precision needed for displaying the frequency.
-  //const int extraDigitsFreq = 2;
-  //const int significantPlacesFreq = ceil(floor(log10(tuned_freq)) - log10(actual_samplerate/params.N) + 1 + extraDigitsFreq);
-  //const int significantPlacesPwr = 6;
-
-/*
-  if( params.matrixMode ) {
-    // we'll APPEND a new scan "row" of power values
-    binfile.open(params.bin_file, std::ios::out | std::ios::app | std::ios::binary);
-  }
-*/
 
   for (int i = 0; i < params.N; i++) {
     freq = tuned_freq + (i - params.N/2.0) * actual_samplerate / params.N;
     if( params.linear ) {
       pwrdb = (data.pwr[i] / data.repeats_done / params.N / actual_samplerate);
-                     //- (params.baseline ? aux.baseline_values[i] : 0);
     }
     else {
       pwrdb = 10*log10(data.pwr[i] / data.repeats_done / params.N / actual_samplerate);
-                     //- (params.baseline ? aux.baseline_values[i] : 0);
     }
-    /*
-    if( params.matrixMode ) {
-      // we are accumulating a double, so 8 bytes, removed the sizeof()
-      // we are writing a float, so 4 bytes
-      // binary file size for 15 mins with N=100 now 43.4 MB instead of 86.8 MB )
-      fpwrdb=pwrdb;
-      binfile.write( (char*)&fpwrdb, 4 );
-      if(metaRows==1) {
-          metaCols = metaCols + 1;
-      }
-    }
-    else
-    {
-      /*
-      std::cout << std::setprecision(significantPlacesFreq)
-                << freq
-                << " "
-                << std::setprecision(significantPlacesPwr)
-                << pwrdb
-                << std::endl;
-      */
-
-      //std::cout << "PWR " << pwrdb << " on " << freq / 1000000 << std::flush;
-
-      //params.threshold
 
       if (pwrdb > params.threshold) {
         std::cout << "~" << freq / 1000000 << "|" << pwrdb << std::endl;
       }
 
-    //}
   }
 
-/*
-  if( params.matrixMode ) {
-    binfile.close();
-    if( tuned_freq >= params.finalfreq ) {
-      metaRows = metaRows + 1;
-    }
-  }
-
-  if( !params.matrixMode ) {
-    // Separate consecutive spectra with empty lines.
-    std::cout << std::endl;
-    std::cout.flush();
-  }
-  */
 }
 
 // Get current date/time, format is "YYYY-MM-DD HH:mm:ss UTC"

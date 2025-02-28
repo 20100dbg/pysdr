@@ -46,8 +46,6 @@ class Datastore {
     std::condition_variable status_change;
     std::vector<int> queue_histogram;
 
-    //std::vector<float>& window_values;
-
     complex *inbuf, *outbuf;
     fftwf_plan plan;
     std::vector<double> pwr;

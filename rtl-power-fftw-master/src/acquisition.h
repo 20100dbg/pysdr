@@ -29,18 +29,6 @@
 #include "datastore.h"
 #include "device.h"
 
-// This object contains data obtained from external sources.
-/*
-class AuxData {
-public:
-  AuxData(const Params& params);
-
-  // Values used for baseline correction.
-  std::vector<double> baseline_values;
-  // Values of the window function.
-  std::vector<float> window_values;
-};
-*/
 // Plan of the measurement operation. Upon construction, this object adjusts
 // several parameters according to the run time-data and creates a list of
 // frequencies to tune to.
@@ -82,7 +70,6 @@ protected:
 class Acquisition {
 public:
   Acquisition(const Params& params,
-              /*AuxData& aux,*/
               Rtlsdr& rtldev,
               Datastore& data,
               int actual_samplerate,
@@ -104,7 +91,6 @@ protected:
   std::string currentDateTime();
 
   const Params& params;
-  //AuxData& aux;
   Rtlsdr& rtldev;
   Datastore& data;
   // A cached version of the actual sample rate.

@@ -21,8 +21,7 @@
 #include "datastore.h"
 
 Datastore::Datastore(const Params& params_) : //, std::vector<float>& window_values_) :
-  params(params_), queue_histogram(params.buffers+1, 0),
-  /*window_values(window_values_), */ pwr(params.N)
+  params(params_), queue_histogram(params.buffers+1, 0), pwr(params.N)
 {
   for (int i = 0; i < params.buffers; i++)
     empty_buffers.push_back(new Buffer(params.buf_length));
@@ -62,21 +61,21 @@ void Datastore::fftThread()
     Buffer& buffer(*occupied_buffers.front());
     occupied_buffers.pop_front();
     status_lock.unlock();
+
     //A neat new loop to avoid having to have data buffer aligned with fft buffer.
     unsigned int buffer_pointer = 0;
+    
     while (buffer_pointer < buffer.size() && repeats_done < params.repeats ) {
       while (fft_pointer < params.N && buffer_pointer < buffer.size()) {
         //The magic aligment happens here: we have to change the phase of each next complex sample
         //by pi - this means that even numbered samples stay the same while odd numbered samples
         //get multiplied by -1 (thus rotated by pi in complex plane).
         //This gets us output spectrum shifted by half its size - just what we need to get the output right.
+    
         const float multiplier = (fft_pointer % 2 == 0 ? 1 : -1);
         complex bfr_val(buffer[buffer_pointer], buffer[buffer_pointer+1]);
         inbuf[fft_pointer] = (bfr_val - complex(127.0, 127.0)) * multiplier;
-        /*
-        if (params.window)
-          inbuf[fft_pointer] *= window_values[fft_pointer];
-        */
+    
         buffer_pointer += 2;
         fft_pointer++;
       }

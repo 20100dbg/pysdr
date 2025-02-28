@@ -9,6 +9,14 @@ type de messages
 - support de DSD
 - récupérer le niveau de batterie
 
+- revoir traitement/envoi/réception pwr
+- maj config a distance
+- modification des parametres scanner en live avec socket process ?
+- ignorer gamme frq
+- clic sur module : afficher les trois DERNIERE détections
+
+- onglet stats
+-- frq les plus souvent détectées
 
 import module/detection -> ajout tableau/objet 
                         -> ajout carto

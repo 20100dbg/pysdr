@@ -116,6 +116,7 @@ def ping(module_id):
     """ Send PING to module"""
     global local_msg_id
     module_id = int(module_id)
+
     add_history(MsgType.PING.value, local_msg_id, module_id)
     lora.send_bytes(build_message(MsgType.PING.value, local_msg_id, module_id))
     increment_msg_id()
@@ -159,9 +160,11 @@ def callback_lora():
             if msg_type == MsgType.FRQ.value:
 
                 frq = bytes_to_int(payload[0:4])
+                pwr = -1 * bytes_to_int(payload[4:6]) / 100
+
                 cursor.execute(f'INSERT INTO detection (module_id, dt, frq) VALUES ("{msg_from}", "{current_dt}", "{frq}")')
                 db.commit()
-                socketio.emit('got_frq', {'dt': current_dt, 'module_id': msg_from, 'frq': frq})
+                socketio.emit('got_frq', {'dt': current_dt, 'module_id': msg_from, 'frq': frq, 'pwr': pwr})
 
 
             #A module sent back ACK
@@ -198,12 +201,14 @@ def add_history(msg_type, msg_id, msg_to):
     global history
     history.append({"msg_id": msg_id, "msg_type": msg_type, "msg_to": msg_to})
 
+
 def get_history(msg_id, msg_to):
     for h in history:
         if h["msg_id"] == msg_id and h["msg_to"] == msg_to:
             return h["msg_type"]
 
     return None
+
 
 def increment_msg_id():
     global local_msg_id

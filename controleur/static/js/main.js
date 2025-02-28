@@ -189,7 +189,7 @@ function send_config_module(module_id, frq_start, frq_end, threshold) {
   socket.emit("config", {'module_id': module_id, 'frq_start': frq_start, 'frq_end': frq_end, 'threshold': threshold});
 }
 
-
+/*
 socket.on("connect", () => {
   update_etat(true);
   socket.emit("set_time", Date.now());
@@ -198,6 +198,7 @@ socket.on("connect", () => {
 socket.on("disconnect", () => {
   update_etat(false);
 });
+*/
 
 socket.on("got_config_ack", function(module_id) {
   modules[module_id]['applied'] = true;
@@ -221,8 +222,8 @@ socket.on("got_frq", function(params) {
   
   let module_layer = get_module_layer(params['module_id']);
   add_tooltip(module_layer, frq, 5);
-  
-  pop_error("C" + params['module_id'] + " - " + frq);
+
+  pop_error("C" + params['module_id'] + " - " + frq + " / " + params["pwr"]);
 });
 
 

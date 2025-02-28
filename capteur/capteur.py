@@ -54,8 +54,8 @@ def build_key_history(msg):
 def extract_header(data):
     """ Extract header fields from message """
     
-    return (data[0],                  #msg_type
-            bytes_to_int(data[1:2]),  #msg_id
+    return (data[0],                 #msg_type
+            bytes_to_int(data[1:2]), #msg_id
             bytes_to_int(data[2:3])) #msg_from
 
 
@@ -152,8 +152,8 @@ def callback_scanner(frq, pwr):
 
     if send:
         data = b''
-        data += int_to_bytes(frq, 4) 
-        data += struct.pack("f", pwr)
+        data += int_to_bytes(frq, 4)
+        data += int_to_bytes(abs(int(pwr * 100)), 2)
 
         lora.send_bytes(build_message(MsgType.FRQ.value, local_msg_id, local_addr, data))
         increment_msg_id()
