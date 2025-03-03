@@ -1,19 +1,18 @@
+- maj config a distance
+- clic sur module : afficher les trois DERNIERE détections
+- ajouter marquant position dans l'onglet capteurs
+
+
+- onglet dédié carto, onglet dédié tableau ?
+
+
+
 - configuration channel
-
-type de messages
-- CONF_SCAN : configurer frq_start / frq_end / threshold
-- CONF_LORA : configurer channel, air_data_rate ?
-- message AUDIT/STATUS : remonter le niveau de batterie, nb/état clés SDR, pos GPS
-
-
 - support de DSD
 - récupérer le niveau de batterie
 
-- revoir traitement/envoi/réception pwr
-- maj config a distance
 - modification des parametres scanner en live avec socket process ?
 - ignorer gamme frq
-- clic sur module : afficher les trois DERNIERE détections
 
 - onglet stats
 -- frq les plus souvent détectées
@@ -22,8 +21,6 @@ import module/detection -> ajout tableau/objet
                         -> ajout carto
                         -> ajout bandeau / slider
                         -> ajout datatable
-
-
 
 
 location /tiles/ {

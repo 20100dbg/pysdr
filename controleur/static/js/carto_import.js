@@ -1,9 +1,13 @@
 function carto_import_modules(_modules)
 {
-  for (module_id in _modules)
+
+  for (let i = 0; i < _modules.length; i++)
   {
-    let layer = draw_point([_modules[module_id].lat, _modules[module_id].lng], {"module_id": module_id});
-    modules_layers.push(layer);
+    if (_modules[i].lat != 0 && _modules[i].lng != 0)
+    {
+      let layer = draw_point([_modules[i].lat, _modules[i].lng], {"module_id": _modules[i].module_id});
+      modules_layers.push(layer);
+    }
   }
 }
 

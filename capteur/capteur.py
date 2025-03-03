@@ -5,12 +5,7 @@ import threading
 import time
 from enum import Enum
 from scanner import *
-
-
-
-#####from gps import VMA430
-
-
+from gps import VMA430
 
 
 class MsgType(Enum):
@@ -67,6 +62,7 @@ def build_message(msg_type, msg_id, msg_from, data=b''):
     msg += int_to_bytes(msg_id, 1)
     msg += int_to_bytes(msg_from, 1)
     msg += data
+    msg += b'\x00' * (sub_packet_size - len(msg))
     return msg
 
 
@@ -118,9 +114,12 @@ def receive_lora():
                 frq_end = int.from_bytes(data[2:4])
                 threshold = int.from_bytes(data[4:5]) * -1
                 
+                scanner.stop()
                 scanner.set_config(frq_start=frq_start, frq_end=frq_end, threshold=threshold)
+                scanner.activate()
 
                 print(f"new conf : {frq_start} - {frq_end} / {new_threshold}")
+                print(f"scanning : {scanner.scanning}")
                 lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr))
 
             #Update LoRa config
@@ -134,15 +133,19 @@ def receive_lora():
 
             elif msg_type == MsgType.PING.value:
 
-                lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr))
+                data = b''
+                data += struct.pack("d", current_lat)
+                data += struct.pack("d", current_lng)
+                data += scanner.scanning
+                lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr, data))
 
         time.sleep(0.1)
 
 
-def callback_scanner(frq, pwr):
+def callback_scanner(frequency, power):
     """ Handles frequencies detection from scanner """
 
-    frq = clean_frq(frq, step=25)
+    frq = clean_frq(frequency, step=25)
     send = True
 
     if frq not in detection_history:
@@ -153,7 +156,12 @@ def callback_scanner(frq, pwr):
     if send:
         data = b''
         data += int_to_bytes(frq, 4)
-        data += int_to_bytes(abs(int(pwr * 100)), 2)
+
+        pwr = abs(int(power * 100))
+        data += int_to_bytes(pwr, 2)
+
+        print(f"frequency : {frequency}, step 25 : {frq}")
+        print(f"Power : {power}, sending : {pwr}, {int_to_bytes(pwr, 2)}")
 
         lora.send_bytes(build_message(MsgType.FRQ.value, local_msg_id, local_addr, data))
         increment_msg_id()
@@ -190,18 +198,19 @@ local_msg_id = 0
 #LoRa init
 channel = 18
 air_data_rate = 0.3
+debug = True
+sub_packet_size = 32
 
-
-lora = sx126x.sx126x(port="/dev/ttyS0", debug=False)
+lora = sx126x.sx126x(port="/dev/ttyS0", debug=debug)
 lora.set_config(channel=channel,logical_address=local_addr,network=0, tx_power=22, 
-                air_data_rate=air_data_rate, sub_packet_size=32)
+                air_data_rate=air_data_rate, sub_packet_size=sub_packet_size)
 
 thread_lora = threading.Thread(target=receive_lora)
 thread_lora.start()
 
 
-frq_start, frq_end = 400*10**6, 480*10**6
-current_lat, current_lng = None, None
+frq_start, frq_end = 400*10**6, 420*10**6
+current_lat, current_lng = 0, 0
 
 
 #Scanner init
@@ -215,23 +224,7 @@ scanner.activate(blocking=False)
 detection_history = {}
 timeout = 10
 
-while True:
 
-    #A replacer dans la boucle a la suite du GPS query
-    
-    for frq, val in detection_history.copy().items():
-        if time.time() - detection_history[frq] > timeout:
-            del detection_history[frq]
-
-
-    time.sleep(5)
-
-
-scanner.stop()
-lora.stop()
-thread_lora.join()
-
-"""
 #GPS init
 gps = VMA430()
 gps.begin(9600)
@@ -243,13 +236,15 @@ while True:
     gps.getUBX_packet()
     
     if gps.location.latitude and gps.location.longitude:
-        current_lat = struct.pack("d", gps.location.latitude)
-        current_lng = struct.pack("d", gps.location.longitude)
+        current_lat = gps.location.latitude
+        current_lng = gps.location.longitude
+
+    for frq, val in detection_history.copy().items():
+        if time.time() - detection_history[frq] > timeout:
+            del detection_history[frq]
 
     time.sleep(5)
 
-
-lora.stop()
 scanner.stop()
-
-"""
+lora.stop()
+thread_lora.join()

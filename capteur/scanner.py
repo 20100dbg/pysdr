@@ -31,6 +31,7 @@ class scanner:
     def activate(self, blocking=False):
         """ Init rtlsdr and start rtl_power_fftw process """
         self.running = True
+        self.scanning = False
 
         #Starting rtl_power_fftw process
         
@@ -41,11 +42,20 @@ class scanner:
                 "-g", str(self.gain), "-r", str(self.sample_rate), "-p", str(self.ppm), "-n", str(self.repeats), 
                 "-t", str(self.threshold), "-b", str(self.bins), "-d", str(self.dev_index)]
 
+        print(f"cmd : {' '.join(cmd)}")
+
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, text=True)
 
         #headers
         for _ in range(4):
             line = self.process.stdout.readline().strip()
+            print(line)
+            if "!start scanning" in line:
+                self.scanning = True
+
+                if self.debug:
+                    print("Start scanning")
+
 
             for err in errors:
                 if err in line:
@@ -64,6 +74,7 @@ class scanner:
 
     def stop(self):
         self.running = False
+        self.scanning = False
         self.process.send_signal(signal.SIGINT)
         time.sleep(1)
 
@@ -104,7 +115,9 @@ class scanner:
                 break
             
             if data:
-                
+                if self.debug:
+                    print(data)
+
                 if data[0] == "~":
                     frq, pwr = data[1:].split("|")
                     frq = int(float(frq) * 1000)

@@ -1,3 +1,6 @@
+rtl-power : voir README.md
+
+
 
 # 3 - Copier le code
 

@@ -4,7 +4,7 @@ let detections_layers = [];
 let sliderSpan = 100;
 
 
-let carto_coord_type = "mgrs";
+let carto_coord_type = "latlng";
 
 let heatmapcfg = {
   "radius": 30,

@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 from flask import Flask, request, make_response
 from flask_socketio import SocketIO, emit
+import struct
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='gevent')
@@ -18,11 +19,16 @@ def main():
     """ Main page : we open or refresh the app"""
 
     #Retrieve previous data about modules and detections
-    cursor.execute("SELECT module_id, dt, frq FROM detection")
+    cursor.execute("""SELECT module_id, dt, frq, pwr,
+                    latitude, longitude
+                    FROM detection 
+                    INNER JOIN module ON detection.module_id = module.id""")
     detections = cursor.fetchall()
 
-    cursor.execute("SELECT id, frq_start, frq_end, threshold FROM module")
+    cursor.execute("SELECT id, frq_start, frq_end, threshold, latitude, longitude, last_ping, config_applied FROM module")
     modules = cursor.fetchall()
+
+    print(f"modules {modules}")
 
     #Insert data into HTML template
     tpl = open('templates/main.html', 'r').read()
@@ -69,9 +75,9 @@ def config(params):
     current_dt = get_time()
     
     #update DB
-    cursor.execute(f"""UPDATE module SET frq_start='{frq_start}', frq_end='{frq_end}', \
-                        threshold='{threshold}', last_config='{current_dt}', config_applied=false 
-                        WHERE id={module_id}""")
+    cursor.execute(f"UPDATE module SET frq_start='{frq_start}', frq_end='{frq_end}', \
+                        threshold='{threshold}', last_config='{current_dt}', config_applied=false \
+                        WHERE id={module_id}")
     db.commit()
 
     #Send config to module via LoRa
@@ -139,62 +145,65 @@ def get_time():
     return 0
 
 
-def callback_lora():
+def callback_lora(data):
     """ Handles every message received from LoRa """
 
-    #global lora
-
-    while True:
-        data = lora.receive()
         
-        if data and len(data) >= HEADER_SIZE:
+    if data and len(data) >= HEADER_SIZE:
 
-            msg_type, msg_id, msg_from = extract_header(data)
-            payload = data[HEADER_SIZE:]
-            current_dt = get_time()
+        msg_type, msg_id, msg_from = extract_header(data)
+        payload = data[HEADER_SIZE:]
+        current_dt = get_time()
 
-            print(f"received : {bytes_to_str(data)}")
-            print(f"type={msg_type} id={msg_id} from={msg_from} payload={bytes_to_str(payload)}")
+        #print(f"received : {bytes_to_str(data)}")
+        print(f"type={msg_type} id={msg_id} from={msg_from}", end=" ")
 
-            #A module detected something
-            if msg_type == MsgType.FRQ.value:
+        #A module detected something
+        if msg_type == MsgType.FRQ.value:
 
-                frq = bytes_to_int(payload[0:4])
-                pwr = -1 * bytes_to_int(payload[4:6]) / 100
+            frq = bytes_to_int(payload[0:4])
+            pwr = -1 * bytes_to_int(payload[4:6]) / 100
 
-                cursor.execute(f'INSERT INTO detection (module_id, dt, frq) VALUES ("{msg_from}", "{current_dt}", "{frq}")')
+            print(f"FRQ : {frq} - {pwr}")
+
+            cursor.execute(f'INSERT INTO detection (module_id, dt, frq, pwr) VALUES ("{msg_from}", "{current_dt}", "{frq}", "{pwr}")')
+            db.commit()
+            socketio.emit('got_frq', {'dt': current_dt, 'module_id': msg_from, 'frq': frq, 'pwr': pwr})
+
+
+        #A module sent back ACK
+        elif msg_type == MsgType.ACK.value:
+            
+            #check history
+            original_msg_type = get_history(msg_id, msg_from)
+
+            if original_msg_type == MsgType.CONF_SCAN.value:
+
+                cursor.execute(f"SELECT frq_start, frq_end, threshold FROM module WHERE id={msg_from}")
+                module = cursor.fetchone()
+
+                if module[0] == bytes_to_int(payload[0:2]) \
+                    and module[1] == bytes_to_int(payload[2:4]) \
+                    and module[2] == bytes_to_int(payload[4:5]):
+                    
+                    cursor.execute(f'UPDATE module SET config_applied=true WHERE id={msg_from}')
+                    socketio.emit('got_config_ack', msg_from)
+
+            elif original_msg_type == MsgType.CONF_LORA.value:
+                pass
+
+            elif original_msg_type == MsgType.PING.value:
+
+                lat = struct.unpack("d", payload[0:8])[0]
+                lng = struct.unpack("d", payload[8:16])[0]
+                scanning = payload[16] != 0
+
+                cursor.execute(f"UPDATE module SET \
+                    last_ping='{current_dt}', latitude='{lat}', longitude='{lng}' \
+                    WHERE id={msg_from}")
                 db.commit()
-                socketio.emit('got_frq', {'dt': current_dt, 'module_id': msg_from, 'frq': frq, 'pwr': pwr})
+                socketio.emit('got_pong', {"module_id": msg_from, "lat": lat, "lng": lng})
 
-
-            #A module sent back ACK
-            elif msg_type == MsgType.ACK.value:
-                
-                #check history
-                original_msg_type = get_history(msg_id, msg_from)
-
-                if original_msg_type == MsgType.CONF_SCAN.value:
-
-                    cursor.execute(f"SELECT frq_start, frq_end, threshold FROM module WHERE id={msg_from}")
-                    module = cursor.fetchone()
-
-                    if module[0] == bytes_to_int(payload[0:2]) \
-                        and module[1] == bytes_to_int(payload[2:4]) \
-                        and module[2] == bytes_to_int(payload[4:5]):
-                        
-                        cursor.execute(f'UPDATE module SET config_applied=true WHERE id={msg_from}')
-                        socketio.emit('got_config_ack', msg_from)
-
-                elif original_msg_type == MsgType.CONF_LORA.value:
-                    pass
-
-                elif original_msg_type == MsgType.PING.value:
-
-                    cursor.execute(f'UPDATE module SET last_ping={current_dt} WHERE id={msg_from}')
-                    db.commit()
-                    socketio.emit('got_pong', msg_from)
-
-        time.sleep(0.1)
 
 
 def add_history(msg_type, msg_id, msg_to):
@@ -232,9 +241,11 @@ with open('script.sql', 'r') as f:
 global nb_module, history
 nb_module = 0
 history = []
+
 channel = 18
 air_data_rate = 0.3
 local_address = 0
+sub_packet_size = 32
 
 time_setup = False
 local_msg_id = 0
@@ -242,7 +253,8 @@ local_msg_id = 0
 #global lora
 lora = sx126x.sx126x(port="/dev/ttyS0", debug=True)
 lora.set_config(channel=channel, logical_address=local_address, network=0, tx_power=22, 
-                air_data_rate=air_data_rate, sub_packet_size=32)
+                air_data_rate=air_data_rate, sub_packet_size=sub_packet_size)
 
-t_receive = threading.Thread(target=callback_lora)
-t_receive.start()
+lora.listen(callback_lora, sub_packet_size)
+#t_receive = threading.Thread(target=callback_lora)
+#t_receive.start()

@@ -5,7 +5,7 @@ let datatable_css = '../static/css/easypick.css';
 
 function datatable_init() {
 
-    const data = {"headings": ["Module", "Gdh", "FRQ", "PWR"], "data": []};
+    const data = {"headings": ["ID", "GDH", "FRQ", "PWR"], "data": []};
 
     datatable_obj = new simpleDatatables.DataTable("#myTable", {
         type: "string",
@@ -64,7 +64,8 @@ function datatable_init() {
                                 attributes: {
                                     class: "datatable-input",
                                     type: "search",
-                                    "data-columns": `[${index}]`
+                                    "data-columns": `[${index}]`,
+                                    style: "width:50%"
                                 }
                             }
                         ]})
@@ -72,7 +73,7 @@ function datatable_init() {
             }
 
             //remove textbox for datetime column
-            filterHeaders.childNodes[1] = {nodeName: "TH",childNodes: [{nodeName: "INPUT", attributes: {id: "datepicker"}}]};
+            filterHeaders.childNodes[1] = {nodeName: "TH",childNodes: [{nodeName: "INPUT", attributes: {id: "datepicker", style: "width: 50%"}}]};
 
             tHead.childNodes.push(filterHeaders)
             return table

@@ -1,4 +1,5 @@
 import serial
+import threading
 import time
 #from gpiozero import LED
 import RPi.GPIO as GPIO
@@ -28,7 +29,7 @@ class sx126x():
 
     def __init__(self, port="/dev/ttyS0", debug=False):
         """ Constructor """
-   
+
         #params par défaut
         self.default_params = {"addrh" : 0, "addrl": 0, "network": 0, "air_data_rate": 2.4,
                         "sub_packet_size": 240, "channel_noise": "disabled", "tx_power": 22,
@@ -39,6 +40,7 @@ class sx126x():
         self.serial_params = {"port": port, "baudrate": 9600, "parity": serial.PARITY_NONE, 
                                 "stopbits": serial.STOPBITS_ONE, "bytesize": serial.EIGHTBITS}
 
+        self.t_receive = None
         self.conf_mode = False
         self.params = self.default_params
         #/dev/ttyS0 or /dev/ttyAMA0
@@ -161,18 +163,51 @@ class sx126x():
 
         data = self.serial.read(self.serial.in_waiting)
 
-        """
-        #Relies on serial timeout
-        if self.serial.in_waiting:
-            data = self.serial.read_until(expected='')
-        """
-
-        if not data:
-            data = None
-        elif self.debug:
+        if data and self.debug:
             print(f"[+] RECEIVED {len(data)} bytes : {self.__btohex(data)}")
 
         return data
+
+
+
+    def listen_loop(self, callback, expected_size, byte_index_size):
+        """ Check if data is received """
+
+        buffer_receive = b''
+
+        while self.running_listen:
+            
+            #safety to make sure we receive conf ACK
+            if not self.conf_mode:
+
+                data = self.serial.read(self.serial.in_waiting)
+
+                if data:
+                    buffer_receive += data
+
+                    if byte_index_size and not expected_size:
+                        if len(buffer_receive) >= byte_index_size:
+                            expected_size = buffer_receive[byte_index_size]
+                    
+                    if expected_size:
+                        while len(buffer_receive) >= expected_size:
+                            callback(buffer_receive[:expected_size])
+                            buffer_receive = buffer_receive[expected_size:]
+                    else:
+                        callback(buffer_receive)
+
+            time.sleep(0.2)
+
+
+    def listen(self, callback, expected_size=None, byte_index_size=None):
+        
+        #if not expected_size: expected_size = self.params["sub_packet_size"]
+        buffer_receive = b''
+        
+        self.running_listen = True
+        self.t_receive = threading.Thread(target=self.listen_loop, args=[callback, expected_size, byte_index_size])
+        self.t_receive.start()
+
 
 
     #
@@ -439,7 +474,21 @@ class sx126x():
         return bytes.fromhex(txt)
 
     def close(self):
+
+        if self.t_receive:
+            self.running_listen = False
+            self.t_receive.join()
         self.serial.close()
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+    @staticmethod
+    def channel_to_frequency(channel):
+        #return 850.125 + channel
+        return 850_125_000 + (channel * 1_000_000)
+
+    @staticmethod
+    def frequency_to_channel(frequency):
+        #return frequency - 850.125
+        return (frequency - 850_125_000) / 1_000_000

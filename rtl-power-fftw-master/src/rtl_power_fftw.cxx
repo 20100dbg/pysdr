@@ -96,7 +96,7 @@ int main(int argc, char **argv)
 
     set_CtrlC_handler(true);
 
-    std::cout << "Start scanning..." << std::endl;
+    std::cout << "!start scanning..." << std::endl;
 
     params.finalfreq = plan.freqs_to_tune.back();
 

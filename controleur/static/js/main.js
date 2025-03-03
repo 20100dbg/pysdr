@@ -35,10 +35,10 @@ let carto_min_date = 0, carto_max_date = 0;
 let carto_start_range = 0, carto_end_range = 0;
 
 let default_frq_start = 400;
-let default_frq_end = 420;
+let default_frq_end = 480;
 let default_threshold = -10;
 
-
+/*
 let test_modules = {
   '1': {'lat':48.88888, 'lng': 7.90017, 'frq_start': default_frq_start, 'frq_end': default_frq_end, 'threshold': default_threshold, 'last_ping': 0, 'config_applied': true},
   '2': {'lat':48.89113, 'lng': 7.96126, 'frq_start': default_frq_start, 'frq_end': default_frq_end, 'threshold': default_threshold, 'last_ping': 0, 'config_applied': true},
@@ -55,24 +55,24 @@ let test_detections = [
   {'module_id': '2', 'frq': 402350, 'pwr': -30, 'dt': 1739568648000 },
   {'module_id': '1', 'frq': 415500, 'pwr': -20, 'dt': 1739578755000 }
 ];
+*/
 
 
 function import_detections(_detections) {
+  
   let data = [];
 
   //extraction des dates de début/fin
   [min, max] = get_min_max_date(_detections);
-
   carto_min_date = (carto_min_date < min && carto_min_date != 0) ? carto_min_date : min;
   carto_max_date = (carto_max_date > max && carto_max_date != 0) ? carto_max_date : max;
+
+  //maj du slider
   update_slider_range();
 
-  _detections = AttachModuleLocation(modules, _detections);
-
-
+  //parcours des detections
+  //module_id, dt, frq, pwr
   for (let i = 0; i < _detections.length; i++) {
-    //module_id, dt, frq, pwr
-
     let readable_dt = pretty_dt(_detections[i]['dt']);
     
     //preparation datatable
@@ -85,74 +85,52 @@ function import_detections(_detections) {
   //datatable
   datatable_import(data);
 
-  //ajout objet
-  detections = detections.concat(_detections);
+  //ajout des points
+  draw_heatmap(_detections);
 
-  update_slider_range();
-
-  draw_heatmap(detections);
+  detections = detections.concat(_detections);  
   bandeau_init(detections);
 }
 
+function import_modules(_modules)
+{
+  //on parcourt les modules insérés dans le template
+  for (let i = 0; i < tab_modules.length; i++)
+  {
+    //ajout dans l'objet global modules 
+    modules.push({
+      'module_id': tab_modules[i][0],
+      'frq_start': tab_modules[i][1], 'frq_end': tab_modules[i][2], 'threshold': tab_modules[i][3],
+      'lat': tab_modules[i][4], 'lng': tab_modules[i][5], 
+      'last_ping': tab_modules[i][6], 'config_applied': tab_modules[i][7] });
+    
+    //ajout dans le DOM
+    add_module_dom(tab_modules[i][0]);
+  }
 
-//réception/découverte d'un nouveau module pendant le fonctionnement de l'app
-function add_module(lat, lng, frq_start, frq_end, threshold, last_ping, config_applied) {
-
-  nb_module += 1;
-  modules[nb_module] = {'lat': lat, 'lng': lng, 'frq_start': frq_start, 'frq_end': frq_end, 
-                              'threshold': threshold, 'last_ping': last_ping, 'config_applied': config_applied };
-
-  add_module_dom(nb_module);
+  //ajout des points dans la carto
+  carto_import_modules(modules);  
 }
 
 
 //initialize
 (function() {
 
-  main_init();
   datatable_init();
   carto_init();
 
-  //données de test
-  //modules = test_modules;
+  import_detections(init_detections);
+  import_modules(init_modules);
 
-  //import des modules via template
-  for (module_id in test_modules)
-  {
-    add_module(test_modules[module_id].lat, test_modules[module_id].lng, 
-              test_modules[module_id].frq_start, test_modules[module_id].frq_end, 
-              test_modules[module_id].threshold, test_modules[module_id].last_ping, 
-              test_modules[module_id].config_applied);
-  }
-  carto_import_modules(test_modules);
-
-
-  //données de test
-  import_detections(test_detections);
-  carto_import_detections(test_detections);
+  if (modules.length == 0) {
+    document.getElementById('config_nb_module').style = 'display: block';
+  }  
+  //mets les valeurs par défaut dans les champs
+  close_config_module();
 
 })();
 
 
-function main_init() {
-
-  for (var i = 0; i < detections.length; i++) {
-    //module_id, dt, frq, pwr
-    add_detection_dom(detections[i][0], detections[i][1], detections[i][2], detections[i][3]);
-  }
-
-  if (modules.length == 0) {
-    document.getElementById('config_nb_module').style = 'display: block';
-  }
-  else {
-    for (var i = 0; i < modules.length; i++) {
-      add_module_dom(i+1);
-    }
-  }
-  
-  //mets les valeurs par défaut dans les champs
-  close_config_module();
-}
 
 
 function download_csv() {
@@ -189,12 +167,13 @@ function send_config_module(module_id, frq_start, frq_end, threshold) {
   socket.emit("config", {'module_id': module_id, 'frq_start': frq_start, 'frq_end': frq_end, 'threshold': threshold});
 }
 
-/*
+
 socket.on("connect", () => {
-  update_etat(true);
+  //update_etat(true);
   socket.emit("set_time", Date.now());
 });
 
+/*
 socket.on("disconnect", () => {
   update_etat(false);
 });
@@ -205,8 +184,12 @@ socket.on("got_config_ack", function(module_id) {
   pop_error("C" + module_id + " configuré");
 });
 
-socket.on("got_pong", function(module_id) {
-  pop_error("C" + module_id + " répond");
+socket.on("got_pong", function(params) {
+  let idx = params["module_id"] - 1;
+  modules[idx].lat = params["lat"];
+  modules[idx].lng = params["lng"];
+
+  pop_error("C" + params["module_id"] + " répond");
 });
 
 socket.on("got_frq", function(params) {
@@ -215,11 +198,6 @@ socket.on("got_frq", function(params) {
   let frq = pretty_frq(params['frq']);
   import_detections([params]);
 
-  //deja fait dans import_detections()
-  //add_detection_dom(params['module_id'], params['dt'], params['frq'], params["pwr"]);
-
-  //récuperer la layer pour params['module_id']
-  
   let module_layer = get_module_layer(params['module_id']);
   add_tooltip(module_layer, frq, 5);
 
@@ -296,7 +274,7 @@ function set_nb_module()
 
   for (let i = 1; i <= nb_module; i++) {
     modules[i] = {'frq_start': default_frq_start, 'frq_end': default_frq_end, 
-                  'threshold': default_frq_threshold, 'applied': true};
+                  'threshold': default_threshold, 'applied': true};
 
     add_module_dom(i);
   }

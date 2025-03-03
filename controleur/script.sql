@@ -13,4 +13,5 @@ CREATE TABLE IF NOT EXISTS detection (
     id INTEGER PRIMARY KEY AUTOINCREMENT, 
     module_id INTEGER, 
     dt DATETIME,
-    frq INTEGER);
+    frq INTEGER,
+    pwr INTEGER);
