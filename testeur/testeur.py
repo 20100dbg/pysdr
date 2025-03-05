@@ -1,14 +1,8 @@
-import json
-import os.path
-import struct
 import sx126x
-import sys
-import threading
 import time
 from enum import Enum
-from scanner import *
-from gps import VMA430
-
+#from gpiozero import LED
+import RPi.GPIO as GPIO
 
 class MsgType(Enum):
     PING = 1
@@ -21,30 +15,12 @@ class MsgType(Enum):
 HEADER_SIZE = 3
 
 
-def clean_frq(frq, step=5):
-    if not isinstance(frq, float): frq = float(frq)
-    reminder = frq % step
-
-    if reminder < (step // 2): frq = frq - reminder
-    else: frq = frq + (step - reminder) 
-    
-    #return "{0:.3f}".format(frq / 1000)
-    return int(frq)
-
-
 def int_to_bytes(x, bytes_count=1):
     return x.to_bytes(bytes_count, 'big')
 
 
 def bytes_to_int(b):
     return int.from_bytes(b)
-
-
-def build_key_history(msg):
-    """ Create a dictionnary key based on header data """
-
-    msg_type, msg_id, msg_to = extract_header(msg)
-    return str(msg_to) + '-' + str(msg_id)
 
 
 def extract_header(data):
@@ -85,17 +61,9 @@ def relay_message(data):
         lora.send_bytes(data)
 
 
-def increment_msg_id():
-    global local_msg_id
-    local_msg_id += 1
-    if local_msg_id == 256:
-        local_msg_id = 0
-
-
 def callback_lora(data):
     """ Handles every message received from LoRa """
    
-    global frq_start, frq, threshold
     #print(f"Received {data}")
 
     (msg_type, msg_id, msg_to) = extract_header(data)
@@ -106,23 +74,11 @@ def callback_lora(data):
         relay_message(data)
         return
 
-    #Update scanner config
-    if msg_type == MsgType.CONF_SCAN.value:
-        
-        frq_start = bytes_to_int(payload[0:2])
-        frq_end = bytes_to_int(payload[2:4])
-        threshold = payload[4] * -1
-        
-        scanner.stop()
-        scanner.set_config(frq_start=frq_start, frq_end=frq_end, threshold=threshold)
-        scanner.activate()
+    if msg_type == MsgType.ACK.value:
+        #led 1
+    else:
+        #led 2
 
-        save_config()
-        print(f"after config... scanning = {scanner.scanning}")
-
-        #Send back ACK + config
-        data = int_to_bytes(frq_start, 2) + int_to_bytes(frq_end, 2) + int_to_bytes(payload[4], 1)
-        lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr, data))
 
     #Update LoRa config
     elif msg_type == MsgType.CONF_LORA.value:

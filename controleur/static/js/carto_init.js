@@ -1,6 +1,8 @@
 let map, heatmapLayer;
+
 let modules_layers = [];
 let detections_layers = [];
+
 let sliderSpan = 100;
 
 
@@ -43,7 +45,7 @@ function carto_init() {
   
   map = new L.Map('map', {
     editable: true,
-    center: {lat:48.87420, lng:8},
+    center: {lat:48.8, lng:7.84},
     zoom: 12,
     layers: [baseLayer]
   });

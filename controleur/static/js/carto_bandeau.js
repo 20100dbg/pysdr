@@ -34,7 +34,7 @@ function bandeau_init(points)
 
   for (let i = 0; i < points.length; i++)
   {
-    let tmp = diff - (carto_max_date - points[i].dt);
+    let tmp = diff - (carto_max_date - points[i][1]);
     let x = tmp * c.width / diff;
 
     ctx.beginPath();

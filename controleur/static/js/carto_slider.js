@@ -56,7 +56,6 @@ fromSlider.oninput = () =>
   update_slider_range();
 
   //re-draw stuff
-  UpdateDrawPoints();
   draw_heatmap(detections);
 }
 toSlider.oninput = () => 
@@ -66,6 +65,5 @@ toSlider.oninput = () =>
   update_slider_range();
 
   //re-draw stuff
-  UpdateDrawPoints();
   draw_heatmap(detections);
 }

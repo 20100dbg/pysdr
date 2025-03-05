@@ -124,8 +124,9 @@ function cancel_datepicker() {
 function get_search_results() {
     tab_row_idx = datatable_obj._searchData;
 
+    //toutes les données
     if (is_undefined(tab_row_idx)) {
-        carto_import_detections(detections);
+        draw_heatmap(detections);
     }
     else {
         let data = [];
@@ -133,7 +134,7 @@ function get_search_results() {
             let idx_row = tab_row_idx[i];
             data.push(detections[idx_row]);
         }
-        carto_import_detections(data);
+        draw_heatmap(data);
     }
 }
 

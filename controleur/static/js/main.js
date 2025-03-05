@@ -1,6 +1,10 @@
 const socket = io();
-let nb_module = 0;
+let update_module_position = false;
 //helpers
+
+function round(x, nb) {
+  return Number.parseFloat(x).toFixed(nb);
+}
 
 function date_fr() {
   let dateObj = new Date();
@@ -17,6 +21,7 @@ function is_undefined(some_var) {
 }
 
 function pretty_dt(timestamp) {
+  //timestamp = timestamp * 1000;
   return new Date(timestamp).toLocaleString();
 }
 
@@ -35,27 +40,8 @@ let carto_min_date = 0, carto_max_date = 0;
 let carto_start_range = 0, carto_end_range = 0;
 
 let default_frq_start = 400;
-let default_frq_end = 480;
+let default_frq_end = 420;
 let default_threshold = -10;
-
-/*
-let test_modules = {
-  '1': {'lat':48.88888, 'lng': 7.90017, 'frq_start': default_frq_start, 'frq_end': default_frq_end, 'threshold': default_threshold, 'last_ping': 0, 'config_applied': true},
-  '2': {'lat':48.89113, 'lng': 7.96126, 'frq_start': default_frq_start, 'frq_end': default_frq_end, 'threshold': default_threshold, 'last_ping': 0, 'config_applied': true},
-  '3': {'lat':48.88594, 'lng': 7.99696, 'frq_start': default_frq_start, 'frq_end': default_frq_end, 'threshold': default_threshold, 'last_ping': 0, 'config_applied': true}
-};
-
-let test_detections = [
-  {'module_id': '1', 'frq': 400500, 'pwr': -15, 'dt': 1739547111000 },
-  {'module_id': '2', 'frq': 410250, 'pwr': -7, 'dt':  1739547222000 },
-  {'module_id': '3', 'frq': 405800, 'pwr': -10, 'dt': 1739557233000 },
-  {'module_id': '2', 'frq': 412100, 'pwr': -18, 'dt': 1739557342000 },
-  {'module_id': '2', 'frq': 405500, 'pwr': -16, 'dt': 1739568444000 },
-  {'module_id': '2', 'frq': 407500, 'pwr': -22, 'dt': 1739568546000 },
-  {'module_id': '2', 'frq': 402350, 'pwr': -30, 'dt': 1739568648000 },
-  {'module_id': '1', 'frq': 415500, 'pwr': -20, 'dt': 1739578755000 }
-];
-*/
 
 
 function import_detections(_detections) {
@@ -71,45 +57,49 @@ function import_detections(_detections) {
   update_slider_range();
 
   //parcours des detections
-  //module_id, dt, frq, pwr
+  //module_id, dt, frq, pwr, latitude, longitude
   for (let i = 0; i < _detections.length; i++) {
-    let readable_dt = pretty_dt(_detections[i]['dt']);
+    let readable_dt = pretty_dt(_detections[i][1]);
     
     //preparation datatable
-    data.push([_detections[i]['module_id'], readable_dt, _detections[i]['frq'] / 1000, _detections[i]['pwr']])
+    data.push([_detections[i][0], readable_dt, _detections[i][2] / 1000, _detections[i][3]])
 
     //DOM
-    add_detection_dom(_detections[i]['module_id'], readable_dt, _detections[i]['frq'], _detections[i]['pwr']);
+    add_detection_dom(_detections[i][0], readable_dt, _detections[i][2], _detections[i][3]);
   }
   
   //datatable
   datatable_import(data);
 
-  //ajout des points
-  draw_heatmap(_detections);
-
   detections = detections.concat(_detections);  
+  draw_heatmap(detections);
   bandeau_init(detections);
 }
 
 function import_modules(_modules)
 {
   //on parcourt les modules insérés dans le template
-  for (let i = 0; i < tab_modules.length; i++)
+  for (let i = 0; i < _modules.length; i++)
   {
-    //ajout dans l'objet global modules 
-    modules.push({
-      'module_id': tab_modules[i][0],
-      'frq_start': tab_modules[i][1], 'frq_end': tab_modules[i][2], 'threshold': tab_modules[i][3],
-      'lat': tab_modules[i][4], 'lng': tab_modules[i][5], 
-      'last_ping': tab_modules[i][6], 'config_applied': tab_modules[i][7] });
+    //ajout dans l'objet global modules
+    let module_id = _modules[i][0];
+    let threshold = _modules[i][3];
+
+    if (threshold > 0) threshold = threshold * -1;
+
+    modules[module_id] = {
+      'frq_start': _modules[i][1], 'frq_end': _modules[i][2], 'threshold': threshold,
+      'lat': _modules[i][4], 'lng': _modules[i][5], 
+      'last_ping': _modules[i][6], 'config_applied': _modules[i][7] };
     
     //ajout dans le DOM
-    add_module_dom(tab_modules[i][0]);
+    add_module_dom(module_id);
+
+    set_module_position(module_id, _modules[i][4], _modules[i][5]);
   }
 
   //ajout des points dans la carto
-  carto_import_modules(modules);  
+  carto_import_modules(modules);
 }
 
 
@@ -122,7 +112,7 @@ function import_modules(_modules)
   import_detections(init_detections);
   import_modules(init_modules);
 
-  if (modules.length == 0) {
+  if (Object.keys(modules).length == 0) {
     document.getElementById('config_nb_module').style = 'display: block';
   }  
   //mets les valeurs par défaut dans les champs
@@ -163,7 +153,6 @@ function send_nb_module(nb_module) {
 
 function send_config_module(module_id, frq_start, frq_end, threshold) {
   show_loader();
-  threshold = threshold * 10;
   socket.emit("config", {'module_id': module_id, 'frq_start': frq_start, 'frq_end': frq_end, 'threshold': threshold});
 }
 
@@ -185,23 +174,63 @@ socket.on("got_config_ack", function(module_id) {
 });
 
 socket.on("got_pong", function(params) {
-  let idx = params["module_id"] - 1;
-  modules[idx].lat = params["lat"];
-  modules[idx].lng = params["lng"];
 
-  pop_error("C" + params["module_id"] + " répond");
+  let module_id = params["module_id"];
+  modules[module_id].lat = params["lat"];
+  modules[module_id].lng = params["lng"];
+  
+  modules[module_id].frq_start = params["frq_start"];
+  modules[module_id].frq_end = params["frq_end"];
+  modules[module_id].threshold = params["threshold"];
+  modules[module_id]['applied'] = true;
+
+  let layer = get_module_layer(module_id);
+
+  if (layer != null && update_module_position) {
+
+    //delete layer from map
+    layer.remove();
+
+    //delete layer from array
+    let idx = modules_layers.indexOf(layer);
+    modules_layers.splice(idx, 1);
+
+    carto_import_modules(modules);
+    set_module_position(module_id, params["lat"], params["lng"]);
+
+  }
+  else if (layer == null) {
+    carto_import_modules(modules);
+    set_module_position(module_id, params["lat"], params["lng"]);
+  }
+
+  pop_error("C" + module_id + " répond");
 });
 
 socket.on("got_frq", function(params) {
 
-  params['dt'] = params['dt'] * 1000;
   let frq = pretty_frq(params['frq']);
-  import_detections([params]);
+  let module_id = params["module_id"];
+  
+  if (!(module_id in modules)){
+    lat = 0;
+    lng = 0;
+  }
+  else {
+    lat = modules[module_id].lat;
+    lng = modules[module_id].lng;
+  }
 
-  let module_layer = get_module_layer(params['module_id']);
-  add_tooltip(module_layer, frq, 5);
 
-  pop_error("C" + params['module_id'] + " - " + frq + " / " + params["pwr"]);
+  import_detections([[module_id,params['dt'],params['frq'],params['pwr'], lat, lng]]);
+
+  let module_layer = get_module_layer(module_id);
+
+  if (module_layer != null) {
+    add_tooltip(module_id.toString() + " : " + module_layer, frq, 5);
+  }
+
+  pop_error("C" + module_id + " - " + frq + " / " + params["pwr"]);
 });
 
 
@@ -214,11 +243,13 @@ function add_detection_dom(module_id, readable_dt, frq, pwr) {
   let log_detections = document.getElementById('log_detections');
 
   const tpl = document.createElement('template');
-  log_row = readable_dt + " - C" + module_id + " - " + pretty_frq(frq);
+  log_row = readable_dt + " - Capteur " + module_id + " - " + pretty_frq(frq) + " - " + pwr;
   tpl.innerHTML = '<span class="log_row">'+ log_row +'</span>'
 
-  log_detections.appendChild(tpl.content.firstChild);
-  log_detections.scrollTop = log_detections.scrollHeight;
+  log_detections.insertBefore(tpl.content.firstChild, log_detections.firstChild);
+
+  //log_detections.appendChild(tpl.content.firstChild);
+  //log_detections.scrollTop = log_detections.scrollHeight;
 }
 
 
@@ -267,38 +298,46 @@ function update_etat(etat)
 
 function set_nb_module()
 {
-  nb_module = parseInt(document.getElementById('nb_module').value);
+  let nb_module = parseInt(document.getElementById('nb_module').value);
   send_nb_module(nb_module);
 
   document.getElementById('tab_modules').innerHTML = '';
 
-  for (let i = 1; i <= nb_module; i++) {
-    modules[i] = {'frq_start': default_frq_start, 'frq_end': default_frq_end, 
+  for (let module_id = 1; module_id <= nb_module; module_id++) {
+    modules[module_id] = {'frq_start': default_frq_start, 'frq_end': default_frq_end, 
+                  'latitude': 0, 'longitude': 0,
                   'threshold': default_threshold, 'applied': true};
 
-    add_module_dom(i);
+    add_module_dom(module_id);
   }
 
   document.getElementById('config_nb_module').style = 'display: none';
 }
 
-function add_module_dom(id)
+function set_module_position(module_id, latitude, longitude)
+{
+  let div = document.getElementById("position-" + module_id);
+  div.innerText =  round(latitude, 2) + "/" + round(longitude, 2);
+}
+
+function add_module_dom(module_id)
 {
   const tpl = document.createElement('template');
-  tpl.innerHTML = get_tpl(id);
+  tpl.innerHTML = get_tpl(module_id);
 
   let container = document.getElementById('tab_modules');
   container.appendChild(tpl.content.firstChild);
 }
 
-function get_tpl(id)
+function get_tpl(module_id)
 {
   return '<div class="line">' +
-        '<span id="name-'+ id +'">Capteur '+ id +'</span>' +
+        '<span id="name-'+ module_id +'">Capteur '+ module_id +'</span> - ' +
+        '<span id="position-'+ module_id +'">NL</span>' +
 
         '<span class="buttons">' +
-          '<button onclick="send_ping(\''+ id +'\');" style="margin-right: 20px">Ping</buton>' +
-          '<button onclick="show_config_module(\''+ id +'\');">Config</buton>' +
+          '<button onclick="send_ping(\''+ module_id +'\');" style="margin-right: 20px">Ping</buton>' +
+          '<button onclick="show_config_module(\''+ module_id +'\');">Config</buton>' +
         '</span>' +
       '</div>';
 }

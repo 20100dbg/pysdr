@@ -1,16 +1,16 @@
 function draw_point(coordPoint, data = {}, taille = 4, couleur = "#000000")
 {
-
   let layer = L.circleMarker(coordPoint, {
       data: data, radius: taille, stroke:true, 
       color: couleur, weight:1, fill: true, 
       fillColor: couleur, fillOpacity: 1}).addTo(map).on('click', on_click_module);
+  
   return layer;
 }
 
 function add_tooltip(layer, label, timeout=0) {
   
-  layer.bindTooltip(label.toString(), {permanent:true, opacity: 0.6, className: 'tooltip'}).openTooltip();
+  layer.bindTooltip(label.toString(), {permanent:true, opacity: 0.8, className: 'tooltip'}).openTooltip();
 
   if (timeout > 0) {
     setTimeout(function () {
@@ -35,21 +35,23 @@ function show_heatmap(show)
   else layerControl._layers[1].layer.removeFrom(map);
 }
 
-function draw_heatmap(tabPointsHeatmap)
+function draw_heatmap(_detections)
 {
-  var tabPoints = [];
+  let data = [];
 
-  for (var i = 0; i < tabPointsHeatmap.length; i++)
+  for (let i = 0; i < _detections.length; i++)
   {
-    if (tabPointsHeatmap[i].dt >= carto_start_range && tabPointsHeatmap[i].dt <= carto_end_range)
+    if (!is_undefined(_detections[i][4]) && !is_undefined(_detections[i][5]) && 
+      _detections[i][4] != 0 && _detections[i][5] != 0 &&
+      _detections[i][1] >= carto_start_range && _detections[i][1] <= carto_end_range)
     {
-      tabPoints.push(tabPointsHeatmap[i]);
+      data.push({'lat':_detections[i][4], 'lng':_detections[i][5]});
     }
   }
-  maxCount = 2;
-  maxCount = detections.length;
+  //max = 2;
+  max = detections.length;
 
-  heatmapLayer.setData({ max: maxCount, data: tabPoints });
+  heatmapLayer.setData({ max: max, data: data });
 }
 
 

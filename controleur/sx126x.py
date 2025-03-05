@@ -172,7 +172,8 @@ class sx126x():
 
     def listen_loop(self, callback, expected_size, byte_index_size):
         """ Check if data is received """
-
+        buffer_receive = b''
+        last_receive = 0
         while self.running_listen:
             
             #safety to make sure we receive conf ACK
@@ -181,18 +182,23 @@ class sx126x():
                 data = self.serial.read(self.serial.in_waiting)
 
                 if data:
-                    self.buffer_receive += data
+                    buffer_receive += data
+                    last_receive = time.time()
 
                     if byte_index_size and not expected_size:
-                        if len(self.buffer_receive) >= byte_index_size:
-                            expected_size = self.buffer_receive[byte_index_size]
+                        if len(buffer_receive) >= byte_index_size:
+                            expected_size = buffer_receive[byte_index_size]
                     
                     if expected_size:
-                        while len(self.buffer_receive) >= expected_size:
-                            callback(self.buffer_receive[:expected_size])
-                            self.buffer_receive = self.buffer_receive[expected_size:]
+                        while len(buffer_receive) >= expected_size:
+                            callback(buffer_receive[:expected_size])
+                            buffer_receive = buffer_receive[expected_size:]
                     else:
-                        callback(self.buffer_receive)
+                        callback(buffer_receive)
+
+            #buffer timeout to avoid misalignment of packets
+            if time.time() - last_receive > 1:
+                buffer_receive = b''
 
             time.sleep(0.2)
 
@@ -200,8 +206,6 @@ class sx126x():
     def listen(self, callback, expected_size=None, byte_index_size=None):
         
         #if not expected_size: expected_size = self.params["sub_packet_size"]
-        buffer_receive = b''
-        
         self.running_listen = True
         self.t_receive = threading.Thread(target=self.listen_loop, args=[callback, expected_size, byte_index_size])
         self.t_receive.start()

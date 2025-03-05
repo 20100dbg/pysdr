@@ -42,17 +42,16 @@ class scanner:
                 "-g", str(self.gain), "-r", str(self.sample_rate), "-p", str(self.ppm), "-n", str(self.repeats), 
                 "-t", str(self.threshold), "-b", str(self.bins), "-d", str(self.dev_index)]
 
-        print(f"cmd : {' '.join(cmd)}")
+        if self.debug:
+            print(f"cmd : {' '.join(cmd)}")
 
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, text=True)
 
         #headers
         for _ in range(4):
             line = self.process.stdout.readline().strip()
-            print(line)
             if "!start scanning" in line:
                 self.scanning = True
-
                 if self.debug:
                     print("Start scanning")
 

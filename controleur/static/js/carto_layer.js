@@ -3,16 +3,20 @@ function on_click_module(e) {
     let module_id = e.target.options.data.module_id;
     let module_layer = get_module_layer(module_id);
 
-    let label = "";
-    let nb_detections_max = 3;
-    let nb_detections = 0;
+    //three last detections
+    sorted_detections = detections.filter((row) => row[0] == module_id);
+    sorted_detections = sorted_detections.sort((a,b) => (b[1] - a[1]));
 
-    for (let i = 0; i < detections.length; i++) {
-      if (detections[i].module_id == module_id && nb_detections++ < nb_detections_max) {
-        label += pretty_frq(detections[i].frq) + "<br>";
-      }
+    let array_frq = [];
+    for (let i = 0; i < sorted_detections.length && array_frq.length < 3; i++) {
+        if (!(detections[i][2] in array_frq))
+          array_frq.push(pretty_frq(detections[i][2]));
     }
-    add_tooltip(module_layer, label, 5);
+
+    let label = array_frq.join("<br>");
+    add_tooltip(module_id.toString() + " : " + module_layer, label, 5);
+
+    //three more recurrent frq
 }
 
 function SupprimerCouchesDessin()

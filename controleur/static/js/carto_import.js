@@ -1,21 +1,16 @@
 function carto_import_modules(_modules)
 {
-
-  for (let i = 0; i < _modules.length; i++)
+  for (module_id in _modules)
   {
-    if (_modules[i].lat != 0 && _modules[i].lng != 0)
+    if (_modules[module_id].lat != 0 && _modules[module_id].lng != 0)
     {
-      let layer = draw_point([_modules[i].lat, _modules[i].lng], {"module_id": _modules[i].module_id});
+      let layer = draw_point([_modules[module_id].lat, _modules[module_id].lng], 
+                              {"module_id": module_id});
       modules_layers.push(layer);
     }
   }
 }
 
-
-function carto_import_detections(_detections)
-{  
-  //draw_heatmap(detections);
-}
 
 
 function AttachModuleLocation(modules, detections)
@@ -42,12 +37,12 @@ function get_min_max_date(...tab)
     {
       if (typeof min === 'undefined')
       {
-        min = tab[i][j].dt;
-        max = tab[i][j].dt;
+        min = tab[i][j][1];
+        max = tab[i][j][1];
       }
 
-      if (min > tab[i][j].dt) min = tab[i][j].dt;
-      if (max < tab[i][j].dt) max = tab[i][j].dt;
+      if (min > tab[i][j][1]) min = tab[i][j][1];
+      if (max < tab[i][j][1]) max = tab[i][j][1];
     }
   }
 

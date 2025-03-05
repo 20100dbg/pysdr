@@ -1,9 +1,16 @@
-- maj config a distance
-- clic sur module : afficher les trois DERNIERE détections
-- ajouter marquant position dans l'onglet capteurs
 
 
-- onglet dédié carto, onglet dédié tableau ?
+version future :
+
+- update les coordonnées des points détections quand le module got_pong
+
+- vérifier la normalisation du timestamp
+
+- normaliser lat/lng : latitude/longitude
+
+- passer les arguments explicitement ?
+
+- générer la heatmap en fonction du power
 
 
 
@@ -16,11 +23,6 @@
 
 - onglet stats
 -- frq les plus souvent détectées
-
-import module/detection -> ajout tableau/objet 
-                        -> ajout carto
-                        -> ajout bandeau / slider
-                        -> ajout datatable
 
 
 location /tiles/ {

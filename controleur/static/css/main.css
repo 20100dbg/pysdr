@@ -1,3 +1,11 @@
+input[type="number"] {
+  color: #8a8383;
+  /*width: 50px;*/
+  height: 30px;
+  font-size: 20px;
+  border: none;
+}
+
 .container {
   margin-top: 10px;
   margin-right: -5px;
@@ -70,7 +78,7 @@ img {
 
 .config {
   position: absolute;
-  bottom: 50%;
+  top: 10%;
   left: 10%;
   right: 10%;
   z-index: 1000;

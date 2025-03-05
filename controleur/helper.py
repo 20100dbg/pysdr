@@ -48,12 +48,14 @@ def extract_header(data):
 
 def build_message(msg_type, msg_id, msg_from, data=b''):
     """ Create a byte array with specified header data """
+    sub_packet_size = 32
 
     msg = b''
     msg += int_to_bytes(msg_type, 1)
     msg += int_to_bytes(msg_id, 1)
     msg += int_to_bytes(msg_from, 1)
     msg += data
+    msg += b'\x00' * (sub_packet_size - len(msg))
     return msg
 
 def bytes_to_str(arr):

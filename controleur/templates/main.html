@@ -35,7 +35,7 @@
       <tr><th>Frq debut</th><th>Frq fin</th><th>Squelch (-120 - 0)</th></tr>
       <tr><td><input type="number" id="frq_start" size="5"></td>
           <td><input type="number" id="frq_end" size="5"></td>
-          <td><input type="number" id="threshold" min="-120" max="0" step="1" size="2"></td>
+          <td><input type="number" id="threshold" min="-120" max="0" step="1" size="5"></td>
       </tr>
       <tr><td><input disabled type="number" id="frq_start1" size="5"></td>
           <td><input disabled type="number" id="frq_end1" size="5"></td>
@@ -102,16 +102,18 @@
   </div>
 
   <div id="tab_config" style="display: none;">
+    <br><br>
     <button onclick="download_csv();">Télécharger CSV</button>
     <br><br>
-    <button onclick="reset_db();">Reset BDD</button>
+    <br><br>
+    <button onclick="reset_db();">Effacement d'urgence</button>
   </div>
 
 
 </div>
 
 <script type="text/javascript">
-  let modules = [];
+  let modules = {};
   let detections = [];
   let init_detections = {{detections}};
   let init_modules = {{modules}};
