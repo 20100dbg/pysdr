@@ -119,7 +119,7 @@ img {
   width: 100%;
   overflow: auto;
   margin: 0;
-  height: 70vh;
+  height: 100%;
 }
 
 .log_row {

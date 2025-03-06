@@ -12,17 +12,6 @@ class MsgType(Enum):
 HEADER_SIZE = 3
 
 
-def clean_frq(self, frq, step=5):
-    if not isinstance(frq, float): frq = float(frq)
-    frq = frq * 1000
-    reminder = frq % step
-
-    if reminder < (step // 2): frq = frq - reminder
-    else: frq = frq + (step - reminder) 
-    
-    return "{0:.3f}".format(frq / 1000)
-
-
 def int_to_bytes(x, bytes_count=1):
     return x.to_bytes(bytes_count, 'big')
 
@@ -48,6 +37,8 @@ def extract_header(data):
 
 def build_message(msg_type, msg_id, msg_from, data=b''):
     """ Create a byte array with specified header data """
+
+    #bad hardcoding :(
     sub_packet_size = 32
 
     msg = b''

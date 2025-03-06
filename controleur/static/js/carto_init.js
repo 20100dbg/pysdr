@@ -1,11 +1,8 @@
 let map, heatmapLayer;
-
 let modules_layers = [];
-let detections_layers = [];
 
+//current slider width in percent. Is modified elsewhere
 let sliderSpan = 100;
-
-
 let carto_coord_type = "latlng";
 
 let heatmapcfg = {
@@ -14,13 +11,11 @@ let heatmapcfg = {
   "scaleRadius": false,
   "useLocalExtrema": false,
   "pane" : "heatmap",
-  latField: 'lat', lngField: 'lng', valueField: 'count'
+  latField: 'latitude', lngField: 'longitude', valueField: 'count'
 };
 
 
-
 function get_windows_width() {
-  //return 500;
   return window.innerWidth - 30;
 }
 

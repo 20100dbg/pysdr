@@ -44,6 +44,13 @@ function setToggleAccessible(currentTarget) {
   }
 }
 
+function reset_slider()
+{
+  fromSlider.value = 0;
+  toSlider.value = 100;
+  fillSlider(fromSlider, toSlider, '#C6C6C6', '#25daa5', toSlider);
+}
+
 const fromSlider = document.querySelector('#fromSlider');
 const toSlider = document.querySelector('#toSlider');
 fillSlider(fromSlider, toSlider, '#C6C6C6', '#25daa5', toSlider);
@@ -58,6 +65,7 @@ fromSlider.oninput = () =>
   //re-draw stuff
   draw_heatmap(detections);
 }
+
 toSlider.oninput = () => 
 {
   //get slider values

@@ -1,15 +1,15 @@
 import gevent
-from helper import *
 import json
+import os
 import sqlite3
+import struct
 import sx126x
 import threading
 import time
-import os
 from datetime import datetime
 from flask import Flask, request, make_response
 from flask_socketio import SocketIO, emit
-import struct
+from helper import *
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='gevent')
@@ -18,13 +18,14 @@ socketio = SocketIO(app, cors_allowed_origins='*', async_mode='gevent')
 def main():
     """ Main page : we open or refresh the app"""
 
-    #Retrieve previous data about modules and detections
+    #Retrieve detections in database
     cursor.execute("""SELECT module_id, dt, frq, pwr,
                     latitude, longitude
                     FROM detection 
                     INNER JOIN module ON detection.module_id = module.id""")
     detections = cursor.fetchall()
 
+    #Retrieve modules in database
     cursor.execute("SELECT id, frq_start, frq_end, threshold, latitude, longitude, last_ping, config_applied FROM module")
     modules = cursor.fetchall()
 
@@ -79,11 +80,11 @@ def config(params):
     db.commit()
 
     #Send config to module via LoRa
-
     data = int_to_bytes(frq_start, 2) + int_to_bytes(frq_end, 2) + int_to_bytes(threshold, 1)
 
     add_history(MsgType.CONF_SCAN.value, local_msg_id, module_id)
     lora.send_bytes(build_message(MsgType.CONF_SCAN.value, local_msg_id, module_id, data))
+
     increment_msg_id()
 
 
@@ -100,12 +101,9 @@ def set_time(ts):
 
 
 @socketio.on('set_nb_module')
-def set_nb_module(nb):
+def set_nb_module(nb_module):
     """ At startup and manually, client defines how many modules are used. """
     """ We assume for X modules, modules are always identified by ID 1,2,3...X """
-
-    global nb_module
-    nb_module = nb
 
     cursor.execute(f'DELETE FROM module')
     db.commit()
@@ -164,6 +162,7 @@ def callback_lora(data):
         db.commit()
         socketio.emit('got_frq', {'dt': current_dt, 'module_id': msg_from, 'frq': frq, 'pwr': pwr})
 
+    #receive PING (proabably from tester)
     elif msg_type == MsgType.PING.value:
         lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr))
 
@@ -189,29 +188,29 @@ def callback_lora(data):
 
         elif original_msg_type == MsgType.PING.value:
 
-            lat = struct.unpack("d", payload[0:8])[0]
-            lng = struct.unpack("d", payload[8:16])[0]
+            latitude = struct.unpack("d", payload[0:8])[0]
+            longitude = struct.unpack("d", payload[8:16])[0]
             scanning = payload[16] != 0 #is scanning
             frq_start = bytes_to_int(payload[17:19])
             frq_end = bytes_to_int(payload[19:21])
             threshold = payload[21] * -1
 
             cursor.execute(f"UPDATE module SET \
-                last_ping='{current_dt}', latitude='{lat}', longitude='{lng}' \
+                last_ping='{current_dt}', latitude='{latitude}', longitude='{longitude}' \
                 WHERE id={msg_from}")
             db.commit()
-            socketio.emit('got_pong', {"module_id": msg_from, "lat": lat, "lng": lng, 
+            socketio.emit('got_pong', {"module_id": msg_from, "latitude": latitude, "longitude": longitude, 
                                         "frq_start": frq_start, "frq_end": frq_end, "threshold": threshold})
 
 
 
 def add_history(msg_type, msg_id, msg_to):
-    global history
-    history.append({"msg_id": msg_id, "msg_type": msg_type, "msg_to": msg_to})
+    global msg_history
+    msg_history.append({"msg_id": msg_id, "msg_type": msg_type, "msg_to": msg_to})
 
 
 def get_history(msg_id, msg_to):
-    for h in history:
+    for h in msg_history:
         if h["msg_id"] == msg_id and h["msg_to"] == msg_to:
             return h["msg_type"]
 
@@ -236,25 +235,23 @@ with open('script.sql', 'r') as f:
     cursor.executescript(f.read())
     db.commit()
 
-
-global nb_module, history
-nb_module = 0
-history = []
-
-channel = 18
-air_data_rate = 2.4
-local_address = 0
-sub_packet_size = 32
-
+#General
+global msg_history
+msg_history = []
 time_setup = False
 local_msg_id = 0
+debug = False
+
+#LoRa
+local_address = 0
+channel = 18
+air_data_rate = 2.4
+sub_packet_size = 32
+
 
 #global lora
-lora = sx126x.sx126x(port="/dev/ttyS0", debug=True)
+lora = sx126x.sx126x(port="/dev/ttyS0", debug=debug)
 lora.set_config(channel=channel, logical_address=local_address, network=0, tx_power=22, 
                 air_data_rate=air_data_rate, sub_packet_size=sub_packet_size)
 
 lora.listen(callback_lora, sub_packet_size)
-
-#t_receive = threading.Thread(target=callback_lora)
-#t_receive.start()

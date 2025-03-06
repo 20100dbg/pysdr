@@ -11,7 +11,7 @@ function datatable_init() {
         type: "string",
         //scrollY: "1000px",
         //hiddenHeader: true,
-        paging: false,
+        paging: true,
         searchable: true,
 
         //handle custom search in columns
@@ -54,6 +54,7 @@ function datatable_init() {
         //show custom search textbox in columns
         tableRender: (_data, table, type) => {
 
+            const placeholders = ["ID MODULE", "", "408.5 ou 400 410", "-3 ou -5 -10" ]
             const tHead = table.childNodes[0];
             const filterHeaders = {
                 nodeName: "TR",
@@ -65,7 +66,9 @@ function datatable_init() {
                                     class: "datatable-input",
                                     type: "search",
                                     "data-columns": `[${index}]`,
-                                    style: "width:50%"
+                                    id: "search-" + `${index}`,
+                                    style: "width:50%",
+                                    placeholder: placeholders[`${index}`]
                                 }
                             }
                         ]})
@@ -138,6 +141,16 @@ function get_search_results() {
     }
 }
 
+
+function remove_filters() {
+    
+    document.getElementById("search-0").innerText = "";
+    datatable_picker.clear();
+    document.getElementById("search-2").innerText = "";
+    document.getElementById("search-3").innerText = "";
+
+    datatable_obj.refresh();
+}
 
 function empty_table() {
     //let all_indexes = [0,1,2,3];

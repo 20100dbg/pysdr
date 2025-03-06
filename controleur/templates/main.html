@@ -87,8 +87,9 @@
       <canvas id="bandeau" width="600" height="20" style="border:1px solid #eeeeee;"></canvas>
     </div>
 
+    <button onclick="get_search_results();">Appliquer filtres</button>
+    <button onclick="remove_filters();">Retirer filtres</button>
     <table id="myTable" class="display"></table>
-    <button onclick="get_search_results();">Update carto</button>
 
   </div>
 
@@ -117,10 +118,6 @@
   let detections = [];
   let init_detections = {{detections}};
   let init_modules = {{modules}};
-  /*
-  let detections = [];
-  let modules = {};
-  */
 </script>
 
 
@@ -135,10 +132,7 @@
 <script src="../static/js/leaflet_heatmap.js"></script>
 
 <script src="../static/js/carto_slider.js"></script>
-<script src="../static/js/carto_bandeau.js"></script>
-<script src="../static/js/carto_layer.js"></script>
-<script src="../static/js/carto_import.js"></script>
-<script src="../static/js/carto_dessin.js"></script>
+<script src="../static/js/carto.js"></script>
 <script src="../static/js/carto_init.js"></script>
 
 <!-- Main -->

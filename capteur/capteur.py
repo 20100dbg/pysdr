@@ -9,7 +9,6 @@ from enum import Enum
 from scanner import *
 from gps import VMA430
 
-
 class MsgType(Enum):
     PING = 1
     FRQ = 2
@@ -22,6 +21,8 @@ HEADER_SIZE = 3
 
 
 def clean_frq(frq, step=5):
+    """ From a float mHz frequency, return a XXXYYY int, rounded, frequency  """
+    
     if not isinstance(frq, float): frq = float(frq)
     reminder = frq % step
 
@@ -63,6 +64,8 @@ def build_message(msg_type, msg_id, msg_to, data=b''):
     msg += int_to_bytes(msg_id, 1)
     msg += int_to_bytes(msg_to, 1)
     msg += data
+
+    #Fill to sub_packet_size
     msg += b'\x00' * (sub_packet_size - len(msg))
     return msg
 
@@ -81,7 +84,7 @@ def relay_message(data):
     key = build_key_history(data)
 
     if key not in msg_history:
-        msg_history.append(key)
+        msg_history[key] = {"time": time.time()} #, "data": data}
         lora.send_bytes(data)
 
 
@@ -95,30 +98,32 @@ def increment_msg_id():
 def callback_lora(data):
     """ Handles every message received from LoRa """
    
-    global frq_start, frq, threshold
+    global frq_start, frq_end, threshold
     #print(f"Received {data}")
 
     (msg_type, msg_id, msg_to) = extract_header(data)
     payload = data[HEADER_SIZE:]
 
     #Local node is not recipient, lets re-send it 
-    if msg_to != local_addr && msg_to != 255:
+    if msg_to != local_addr and msg_to != 255:
         relay_message(data)
         return
 
     #Update scanner config
     if msg_type == MsgType.CONF_SCAN.value:
         
+        #Update local vars
         frq_start = bytes_to_int(payload[0:2])
         frq_end = bytes_to_int(payload[2:4])
         threshold = payload[4] * -1
         
+        #stop, set config, and start again scanner
         scanner.stop()
         scanner.set_config(frq_start=frq_start, frq_end=frq_end, threshold=threshold)
         scanner.activate()
 
+        #Save config in file
         save_config()
-        print(f"after config... scanning = {scanner.scanning}")
 
         #Send back ACK + config
         data = int_to_bytes(frq_start, 2) + int_to_bytes(frq_end, 2) + int_to_bytes(payload[4], 1)
@@ -127,14 +132,16 @@ def callback_lora(data):
     #Update LoRa config
     elif msg_type == MsgType.CONF_LORA.value:
 
+        #Not used right now
         channel = payload[0]
         air_data_rate = bytes_to_int(payload[1:3]) / 10
-        lora.set_config(channel=channel,air_data_rate=air_data_rate)
-        
+
+        lora.set_config(channel=channel,air_data_rate=air_data_rate)        
         lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr))
 
     elif msg_type == MsgType.PING.value:
 
+        #receive broadcast PING (proabably from tester)
         if msg_to == 255:
             lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr))
         
@@ -150,7 +157,6 @@ def callback_lora(data):
             data += int_to_bytes(abs(threshold), 1)
 
             lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr, data))
-
 
 
 def callback_scanner(frequency, power):
@@ -192,7 +198,7 @@ if len(sys.argv) != 2:
     exit(1)
 
 #General
-debug = True
+debug = False
 
 #LoRa
 local_addr = int(sys.argv[1])
@@ -203,26 +209,24 @@ air_data_rate = 2.4
 sub_packet_size = 32
 
 #scanner
-global frq_start, frq_end, threshold
+global frq_start, frq_end, threshold, detection_history
 frq_start, frq_end, threshold = 400, 420, -10
-
-if os.path.isfile("config.json"):
-    load_config()
-else:
-    save_config()
-
-global detection_history
-detection_history = {} #[frq] = {time, pwr}
+detection_history = {} #detection_history[frq] = {'time': time.time(), 'power': power}
 delay_detection = 0.1
 
 #gps
 current_lat, current_lng = 0, 0
 delay_gps = 5
 
+if os.path.isfile("config.json"):
+    load_config()
+else:
+    save_config()
+
 lora = sx126x.sx126x(port="/dev/ttyS0", debug=debug)
 lora.set_config(channel=channel,logical_address=local_addr,network=0, tx_power=22, 
                 air_data_rate=air_data_rate, sub_packet_size=sub_packet_size)
-lora.listen(callback_lora, sub_packet_size)
+lora.listen(callback=callback_lora, expected_size=sub_packet_size)
 
 
 #Scanner init
@@ -244,11 +248,15 @@ gps_online = False
 #Main loop, requesting GPS location
 while True:
 
+    #gps
     if time.time() - last_gps > delay_gps:
+        
+        #keep trying to set it online
         if not gps_online:
             gps_online = gps.setUBXNav()
 
         else:
+            #when online, get position
             gps.getUBX_packet()
 
             if gps.location.latitude and gps.location.longitude:
@@ -261,7 +269,7 @@ while True:
         last_gps = time.time()
 
 
-    #send detections
+    #filter out detections
     frq_max, pwr_max = 0,-120
 
     for frq, val in detection_history.copy().items():
@@ -271,6 +279,7 @@ while True:
                 pwr_max = val["power"]
             del detection_history[frq]
 
+    #send detections
     if frq_max != 0 and pwr_max != -120:
         data = b''
         data += int_to_bytes(frq_max, 4)
@@ -281,6 +290,11 @@ while True:
 
         lora.send_bytes(build_message(MsgType.FRQ.value, local_msg_id, local_addr, data))
         increment_msg_id()
+
+    #clean msg_history queue
+    for key, val in msg_history.copy().items():
+        if time.time() - val["time"] > 60: 
+            del msg_history[key]
 
     time.sleep(delay_detection)
 

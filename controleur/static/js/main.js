@@ -2,6 +2,13 @@ const socket = io();
 let update_module_position = false;
 //helpers
 
+
+function DateLisible(dateObj)
+{
+  return dateObj.toLocaleDateString('fr-fr') + ' ' +
+        dateObj.toTimeString().substring(0,8);      
+}
+
 function round(x, nb) {
   return Number.parseFloat(x).toFixed(nb);
 }
@@ -21,8 +28,13 @@ function is_undefined(some_var) {
 }
 
 function pretty_dt(timestamp) {
-  //timestamp = timestamp * 1000;
   return new Date(timestamp).toLocaleString();
+}
+
+function get_small_date(timestamp) {
+
+  let str = new Date(timestamp).toLocaleString();
+  return str.substring(0,5) + str.substring(10);
 }
 
 function pretty_frq(frq) {
@@ -65,7 +77,7 @@ function import_detections(_detections) {
     data.push([_detections[i][0], readable_dt, _detections[i][2] / 1000, _detections[i][3]])
 
     //DOM
-    add_detection_dom(_detections[i][0], readable_dt, _detections[i][2], _detections[i][3]);
+    add_detection_dom(_detections[i][0], _detections[i][1], _detections[i][2], _detections[i][3]);
   }
   
   //datatable
@@ -89,7 +101,7 @@ function import_modules(_modules)
 
     modules[module_id] = {
       'frq_start': _modules[i][1], 'frq_end': _modules[i][2], 'threshold': threshold,
-      'lat': _modules[i][4], 'lng': _modules[i][5], 
+      'latitude': _modules[i][4], 'longitude': _modules[i][5], 
       'last_ping': _modules[i][6], 'config_applied': _modules[i][7] };
     
     //ajout dans le DOM
@@ -176,13 +188,21 @@ socket.on("got_config_ack", function(module_id) {
 socket.on("got_pong", function(params) {
 
   let module_id = params["module_id"];
-  modules[module_id].lat = params["lat"];
-  modules[module_id].lng = params["lng"];
-  
+  modules[module_id].latitude = params["latitude"];
+  modules[module_id].longitude = params["longitude"];  
   modules[module_id].frq_start = params["frq_start"];
   modules[module_id].frq_end = params["frq_end"];
   modules[module_id].threshold = params["threshold"];
   modules[module_id]['applied'] = true;
+
+  //update detections position
+  if (modules[module_id].latitude != 0 && modules[module_id].longitude != 0) {
+    for (let i = 0; i < detections.length; i++) {
+      detections[i][4] = modules[module_id].latitude;
+      detections[i][5] = modules[module_id].longitude;
+    }
+    draw_heatmap(detections);
+  }
 
   let layer = get_module_layer(module_id);
 
@@ -196,12 +216,12 @@ socket.on("got_pong", function(params) {
     modules_layers.splice(idx, 1);
 
     carto_import_modules(modules);
-    set_module_position(module_id, params["lat"], params["lng"]);
+    set_module_position(module_id, params["latitude"], params["longitude"]);
 
   }
   else if (layer == null) {
     carto_import_modules(modules);
-    set_module_position(module_id, params["lat"], params["lng"]);
+    set_module_position(module_id, params["latitude"], params["longitude"]);
   }
 
   pop_error("C" + module_id + " répond");
@@ -211,23 +231,25 @@ socket.on("got_frq", function(params) {
 
   let frq = pretty_frq(params['frq']);
   let module_id = params["module_id"];
-  
-  if (!(module_id in modules)){
-    lat = 0;
-    lng = 0;
+
+  //si on reçoit une détection avant même avoir définit le nombre de modules (et donc l'objet)
+  if (!(module_id in modules))
+  {
+    latitude = 0;
+    longitude = 0;
   }
   else {
-    lat = modules[module_id].lat;
-    lng = modules[module_id].lng;
+    latitude = modules[module_id].latitude;
+    longitude = modules[module_id].longitude;
   }
 
-
-  import_detections([[module_id,params['dt'],params['frq'],params['pwr'], lat, lng]]);
+  import_detections([[module_id,params['dt'],params['frq'],params['pwr'], latitude, longitude]]);
 
   let module_layer = get_module_layer(module_id);
 
   if (module_layer != null) {
-    add_tooltip(module_id.toString() + " : " + module_layer, frq, 5);
+    let label = "C" + module_id.toString() + " : " + frq;
+    add_tooltip(module_layer, label, 5);
   }
 
   pop_error("C" + module_id + " - " + frq + " / " + params["pwr"]);
@@ -238,12 +260,13 @@ socket.on("got_frq", function(params) {
 
 // interface
 
-function add_detection_dom(module_id, readable_dt, frq, pwr) {
+function add_detection_dom(module_id, dt, frq, pwr) {
 
   let log_detections = document.getElementById('log_detections');
+  let small_date = get_small_date(dt);
 
   const tpl = document.createElement('template');
-  log_row = readable_dt + " - Capteur " + module_id + " - " + pretty_frq(frq) + " - " + pwr;
+  log_row = small_date + " / C" + module_id + " / " + pretty_frq(frq) + " / " + pwr;
   tpl.innerHTML = '<span class="log_row">'+ log_row +'</span>'
 
   log_detections.insertBefore(tpl.content.firstChild, log_detections.firstChild);
