@@ -51,9 +51,9 @@ def build_key_history(msg):
 def extract_header(data):
     """ Extract header fields from message """
     
-    return (data[0],                 #msg_type
-            bytes_to_int(data[1:2]), #msg_id
-            bytes_to_int(data[2:3])) #msg_to
+    return (data[0], #msg_type
+            data[1], #msg_id
+            data[2]) #msg_to
 
 
 def build_message(msg_type, msg_id, msg_to, data=b''):
@@ -83,15 +83,22 @@ def relay_message(data):
     #Check for duplicates
     key = build_key_history(data)
 
-    if key not in msg_history:
-        msg_history[key] = {"time": time.time()} #, "data": data}
-        lora.send_bytes(data)
+    if key not in relay_history:
+        relay_history[key] = {"time": time.time(), "data": data, "sent": False}
+        
+        #lora.send_bytes(data)
+        
+        if debug:
+            print(f"Relai message : {btohex(data)}")
+
+        if debug:
+            log(f"Relai message : {btohex(data)}")
 
 
 def increment_msg_id():
     global local_msg_id
     local_msg_id += 1
-    if local_msg_id == 256:
+    if local_msg_id == 255:
         local_msg_id = 0
 
 
@@ -99,7 +106,13 @@ def callback_lora(data):
     """ Handles every message received from LoRa """
    
     global frq_start, frq_end, threshold
-    #print(f"Received {data}")
+    if debug:
+        print(f"Received {btohex(data)}")
+
+
+    if debug:
+        log(f"Received {btohex(data)}")
+
 
     (msg_type, msg_id, msg_to) = extract_header(data)
     payload = data[HEADER_SIZE:]
@@ -115,7 +128,7 @@ def callback_lora(data):
         #Update local vars
         frq_start = bytes_to_int(payload[0:2])
         frq_end = bytes_to_int(payload[2:4])
-        threshold = payload[4] * -1
+        threshold = struct.unpack("b", payload[4])[0]
         
         #stop, set config, and start again scanner
         scanner.stop()
@@ -127,6 +140,12 @@ def callback_lora(data):
 
         #Send back ACK + config
         data = int_to_bytes(frq_start, 2) + int_to_bytes(frq_end, 2) + int_to_bytes(payload[4], 1)
+        
+
+        if debug:
+            log(f"Send ACK CONF_SCAN : {btohex(data)}")
+
+
         lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr, data))
 
     #Update LoRa config
@@ -145,6 +164,9 @@ def callback_lora(data):
         if msg_to == 255:
             lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr))
         
+        if debug:
+            log(f"Send ACK PING TESTER")
+
         else:
             is_scanning = 1 if scanner.scanning else 0
 
@@ -154,7 +176,10 @@ def callback_lora(data):
             data += int_to_bytes(is_scanning, 1)
             data += int_to_bytes(frq_start, 2) 
             data += int_to_bytes(frq_end, 2)
-            data += int_to_bytes(abs(threshold), 1)
+            data += struct.pack("b", threshold)
+
+            if debug:
+                log(f"Send ACK PING")
 
             lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr, data))
 
@@ -191,6 +216,13 @@ def load_config():
 
 
 
+    def log(data):
+        with open("log", "a") as f:
+            diff_time = round(time.time() - start_time,3)
+            f.write(diff_time + " : " + data + "\n")
+
+
+
 #Entry point
 
 if len(sys.argv) != 2:
@@ -198,12 +230,13 @@ if len(sys.argv) != 2:
     exit(1)
 
 #General
-debug = False
+start_time = time.time()
+debug = True
 
 #LoRa
 local_addr = int(sys.argv[1])
 local_msg_id = 0
-msg_history = {}
+relay_history = {}
 channel = 18
 air_data_rate = 2.4
 sub_packet_size = 32
@@ -212,7 +245,10 @@ sub_packet_size = 32
 global frq_start, frq_end, threshold, detection_history
 frq_start, frq_end, threshold = 400, 420, -10
 detection_history = {} #detection_history[frq] = {'time': time.time(), 'power': power}
+send_history = {}
 delay_detection = 0.1
+delay_duplicate = 30
+range_duplicate = 0.5
 
 #gps
 current_lat, current_lng = 0, 0
@@ -279,24 +315,56 @@ while True:
                 pwr_max = val["power"]
             del detection_history[frq]
 
-    #send detections
+
     if frq_max != 0 and pwr_max != -120:
-        data = b''
-        data += int_to_bytes(frq_max, 4)
-        pwr = abs(int(pwr_max * 100))
-        data += int_to_bytes(pwr, 2)
+        send = True
 
-        print(f"sending {frq_max} / {pwr_max}")
+        #avoid sending again a close and/or recent frequency
+        for hist_frq in send_history:
+            hist_time = send_history[hist_frq]
 
-        lora.send_bytes(build_message(MsgType.FRQ.value, local_msg_id, local_addr, data))
-        increment_msg_id()
+            if hist_frq >= frq_max - range_duplicate and \
+                hist_frq <= frq_max + range_duplicate and \
+                time.time() - hist_time < delay_duplicate:
+                send = False
+                break
 
-    #clean msg_history queue
-    for key, val in msg_history.copy().items():
-        if time.time() - val["time"] > 60: 
-            del msg_history[key]
+        if send:
+            send_history[frq_max] = time.time()
 
-    time.sleep(delay_detection)
+            data = b''
+            data += int_to_bytes(frq_max, 4)
+            pwr = abs(int(pwr_max * 100))
+            data += int_to_bytes(pwr, 2)
+
+            if debug:
+                print(f"sending {frq_max} / {pwr_max}")
+
+            if debug:
+                log(f"sending {frq_max} / {pwr_max}")
+
+            lora.send_bytes(build_message(MsgType.FRQ.value, local_msg_id, local_addr, data))
+            increment_msg_id()
+
+
+    #clean send_history queue
+    for key, val in send_history.copy().items():
+        if time.time() - val > delay_duplicate: 
+            del send_history[key]
+
+    #send relay messages and clean relay_history queue
+    for key, val in relay_history.copy().items():
+        diff_time = time.time() - val["time"]
+        
+        if diff_time > 0.5 and val["sent"] == False:
+            lora.send_bytes(val["data"])
+            time.sleep(0.1)
+            val["sent"] = True
+
+        if diff_time > 60:
+            del relay_history[key]
+
+    time.sleep(0.1)
 
 
 scanner.stop()

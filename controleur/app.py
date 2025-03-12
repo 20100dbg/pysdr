@@ -70,7 +70,7 @@ def config(params):
     module_id = int(params['module_id'])
     frq_start = int(params['frq_start'])
     frq_end = int(params['frq_end'])
-    threshold = abs(int(params['threshold']))
+    threshold = int(params['threshold'])
     current_dt = get_time()
     
     #update DB
@@ -80,7 +80,8 @@ def config(params):
     db.commit()
 
     #Send config to module via LoRa
-    data = int_to_bytes(frq_start, 2) + int_to_bytes(frq_end, 2) + int_to_bytes(threshold, 1)
+    threshold = struct.pack("b", int_to_bytes(threshold, 1))
+    data = int_to_bytes(frq_start, 2) + int_to_bytes(frq_end, 2) + threshold
 
     add_history(MsgType.CONF_SCAN.value, local_msg_id, module_id)
     lora.send_bytes(build_message(MsgType.CONF_SCAN.value, local_msg_id, module_id, data))
@@ -150,7 +151,8 @@ def callback_lora(data):
     current_dt = get_time()
 
     #print(f"received : {bytes_to_str(data)}")
-    print(f"type={msg_type} id={msg_id} from={msg_from}", end=" ", flush=True)
+    if debug:
+        print(f"type={msg_type} id={msg_id} from={msg_from}", end=" ", flush=True)
 
     #A module detected something
     if msg_type == MsgType.FRQ.value:
@@ -162,9 +164,9 @@ def callback_lora(data):
         db.commit()
         socketio.emit('got_frq', {'dt': current_dt, 'module_id': msg_from, 'frq': frq, 'pwr': pwr})
 
-    #receive PING (proabably from tester)
+    #receive PING (probably from tester)
     elif msg_type == MsgType.PING.value:
-        lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr))
+        lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_address))
 
     #A module sent back ACK
     elif msg_type == MsgType.ACK.value:
@@ -193,7 +195,7 @@ def callback_lora(data):
             scanning = payload[16] != 0 #is scanning
             frq_start = bytes_to_int(payload[17:19])
             frq_end = bytes_to_int(payload[19:21])
-            threshold = payload[21] * -1
+            threshold = struct.unpack("b", int_to_bytes(payload[21], 1))[0]
 
             cursor.execute(f"UPDATE module SET \
                 last_ping='{current_dt}', latitude='{latitude}', longitude='{longitude}' \
@@ -220,7 +222,7 @@ def get_history(msg_id, msg_to):
 def increment_msg_id():
     global local_msg_id
     local_msg_id += 1
-    if local_msg_id == 256:
+    if local_msg_id == 255:
         local_msg_id = 0
 
 

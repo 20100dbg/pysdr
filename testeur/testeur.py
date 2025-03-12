@@ -1,9 +1,8 @@
 import sx126x
 import time
 from enum import Enum
-from gpiozero import LED, Button
+from gpiozero import LED, Button, InputDevice
 #import RPi.GPIO as GPIO
-
 
 class MsgType(Enum):
     PING = 1
@@ -26,7 +25,7 @@ def bytes_to_int(b):
 
 def extract_header(data):
     """ Extract header fields from message """
-    
+
     return (data[0],                 #msg_type
             bytes_to_int(data[1:2]), #msg_id
             bytes_to_int(data[2:3])) #msg_to
@@ -51,7 +50,7 @@ def btohex(b):
 
 def callback_lora(data):
     """ Handles every message received from LoRa """
-   
+
     #print(f"Received {data}")
 
     (msg_type, msg_id, msg_to) = extract_header(data)
@@ -62,39 +61,54 @@ def callback_lora(data):
         time.sleep(2)
         led.off()
 
-        
-def on_button():
-    print("bouton appui")
-    led.on()
-    #lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr, data))
-    pass
+
+def on_button():    
+    global last_push_time
+
+    print("on_button !")
+
+    if time.time() - last_push_time > 2:
+        lora.send_bytes(build_message(MsgType.PING.value, local_msg_id, local_addr))
+        last_push_time = time.time()
+
+
 
 #General
+global last_push_time
 debug = True
+last_push_time = 0
 
 #LoRa
 local_addr = 255
-local_msg_id = 0
+local_msg_id = 255
 channel = 18
 air_data_rate = 2.4
 sub_packet_size = 32
 
 
+#gpiozero
 led = LED("GPIO26")
-button = Button("GPIO21")
+button = InputDevice(17, pull_up=False)
 
-button.when_pressed = on_button
 
 """
+#Rpi.GPIO
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) #Button
+GPIO.setup(26, GPIO.OUT) #LED
+"""
+
 lora = sx126x.sx126x(port="/dev/ttyS0", debug=debug)
-lora.set_config(channel=channel,logical_address=local_addr,network=0, tx_power=22, 
+lora.set_config(channel=channel,logical_address=local_addr,network=0, tx_power=22,
                 air_data_rate=air_data_rate, sub_packet_size=sub_packet_size)
 lora.listen(callback=callback_lora, expected_size=sub_packet_size)
-"""
 
 while True:
 
-    time.sleep(1)
+    if button.value:
+        on_button()
 
+    time.sleep(0.1)
 
-#lora.close()
+lora.close()
