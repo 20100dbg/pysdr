@@ -117,6 +117,20 @@ def callback_lora(data):
     (msg_type, msg_id, msg_to) = extract_header(data)
     payload = data[HEADER_SIZE:]
 
+
+    #######################################################
+
+    key = build_key_history(data)
+
+    if key not in receive_history:
+        receive_history[key] = time.time() #{"time": time.time()} #, "data": data, "sent": False}
+    else:
+        return None
+    
+
+    #######################################################
+
+
     #Local node is not recipient, lets re-send it 
     if msg_to != local_addr and msg_to != 255:
         relay_message(data)
@@ -164,8 +178,8 @@ def callback_lora(data):
         if msg_to == 255:
             lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_addr))
         
-        if debug:
-            log(f"Send ACK PING TESTER")
+            if debug:
+                log(f"Send ACK PING TESTER")
 
         else:
             is_scanning = 1 if scanner.scanning else 0
@@ -216,10 +230,10 @@ def load_config():
 
 
 
-    def log(data):
-        with open("log", "a") as f:
-            diff_time = round(time.time() - start_time,3)
-            f.write(diff_time + " : " + data + "\n")
+def log(data):
+    with open("log_relay", "a") as f:
+        diff_time = round(time.time() - start_time,3)
+        f.write(str(diff_time) + " : " + str(data) + "\n")
 
 
 
@@ -231,6 +245,7 @@ if len(sys.argv) != 2:
 
 #General
 start_time = time.time()
+receive_history = {}
 debug = True
 
 #LoRa
@@ -249,6 +264,7 @@ send_history = {}
 delay_detection = 0.1
 delay_duplicate = 30
 range_duplicate = 0.5
+delay_receive = 5
 
 #gps
 current_lat, current_lng = 0, 0
@@ -363,6 +379,12 @@ while True:
 
         if diff_time > 60:
             del relay_history[key]
+
+
+    #clean receive_history queue
+    for key, val in receive_history.copy().items():
+        if time.time() - val > delay_receive: 
+            del receive_history[key]
 
     time.sleep(0.1)
 

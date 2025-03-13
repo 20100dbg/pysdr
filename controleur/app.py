@@ -166,7 +166,9 @@ def callback_lora(data):
 
     #receive PING (probably from tester)
     elif msg_type == MsgType.PING.value:
-        lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_address))
+
+        if msg_from == 255:
+            lora.send_bytes(build_message(MsgType.ACK.value, msg_id, local_address))
 
     #A module sent back ACK
     elif msg_type == MsgType.ACK.value:
