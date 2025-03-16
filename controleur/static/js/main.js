@@ -174,11 +174,7 @@ socket.on("connect", () => {
   socket.emit("set_time", Date.now());
 });
 
-/*
-socket.on("disconnect", () => {
-  update_etat(false);
-});
-*/
+
 
 socket.on("got_config_ack", function(module_id) {
   modules[module_id]['applied'] = true;
@@ -256,6 +252,11 @@ socket.on("got_frq", function(params) {
 });
 
 
+/*
+socket.on("disconnect", () => {
+  update_etat(false);
+});
+*/
 
 
 // interface

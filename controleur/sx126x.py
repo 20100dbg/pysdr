@@ -46,6 +46,7 @@ class sx126x():
         #/dev/ttyS0 or /dev/ttyAMA0
 
         self.serial = self.__open_serial(port=self.serial_params["port"], timeout=1)
+        self.serial.read(self.serial.in_waiting)
         self.debug = debug
 
         self.M0 = 22

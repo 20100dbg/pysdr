@@ -280,7 +280,7 @@ if os.path.isfile("config.json"):
 else:
     save_config()
 
-lora = sx126x.sx126x(port="/dev/ttyS0", debug=debug)
+lora = sx126x.sx126x(port="/dev/ttyAMA0", debug=debug)
 lora.set_config(channel=channel,logical_address=local_addr,network=0, tx_power=22, 
                 air_data_rate=air_data_rate, sub_packet_size=sub_packet_size)
 lora.listen(callback=callback_lora, expected_size=sub_packet_size)
@@ -297,13 +297,14 @@ scanner.activate(blocking=False)
 #GPS init
 
 gps = VMA430()
-gps.begin(port="/dev/ttyAMA2", baudrate=9600, debug=debug)
+gps.begin(port="/dev/ttyAMA1", baudrate=9600, debug=debug)
 
 last_gps = 0
 gps_online = False
 
 #Main loop, requesting GPS location
 while True:
+
 
     #gps
     if time.time() - last_gps > delay_gps:

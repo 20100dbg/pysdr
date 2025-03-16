@@ -80,7 +80,7 @@ def config(params):
     db.commit()
 
     #Send config to module via LoRa
-    threshold = struct.pack("b", int_to_bytes(threshold, 1))
+    threshold = struct.pack("b", threshold)
     data = int_to_bytes(frq_start, 2) + int_to_bytes(frq_end, 2) + threshold
 
     add_history(MsgType.CONF_SCAN.value, local_msg_id, module_id)
@@ -150,6 +150,23 @@ def callback_lora(data):
     payload = data[HEADER_SIZE:]
     current_dt = get_time()
 
+    ##################################
+
+    key = build_key_history(data)
+    is_duplicate = False
+
+    if key in receive_history:
+        if time.time() - receive_history[key] < 30:
+            is_duplicate = True
+    
+    receive_history[key] = time.time()
+
+    if is_duplicate:
+        return None
+    
+    ##################################
+
+
     #print(f"received : {bytes_to_str(data)}")
     if debug:
         print(f"type={msg_type} id={msg_id} from={msg_from}", end=" ", flush=True)
@@ -183,7 +200,7 @@ def callback_lora(data):
 
             if module[0] == bytes_to_int(payload[0:2]) \
                 and module[1] == bytes_to_int(payload[2:4]) \
-                and module[2] == payload[4]:
+                and module[2] == struct.unpack("b", int_to_bytes(payload[4], 1))[0]:
                 cursor.execute(f'UPDATE module SET config_applied=true WHERE id={msg_from}')
                 socketio.emit('got_config_ack', msg_from)
 
@@ -240,8 +257,9 @@ with open('script.sql', 'r') as f:
     db.commit()
 
 #General
-global msg_history
+global msg_history, receive_history
 msg_history = []
+receive_history = {}
 time_setup = False
 local_msg_id = 0
 debug = False

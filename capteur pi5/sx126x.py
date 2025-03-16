@@ -1,8 +1,7 @@
 import serial
 import threading
 import time
-#from gpiozero import LED
-import RPi.GPIO as GPIO
+from gpiozero import LED, OutputDevice
 
 class sx126x():
 
@@ -52,15 +51,18 @@ class sx126x():
         self.M0 = 22
         self.M1 = 27
 
+        """
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
         GPIO.setup(self.M0, GPIO.OUT)
         GPIO.setup(self.M1, GPIO.OUT)
 
-        """
         self.M0 = LED("GPIO22")
         self.M1 = LED("GPIO27")
         """
+        self.M0 = OutputDevice("GPIO22", active_high=True, initial_value=False)
+        self.M1 = OutputDevice("GPIO27", active_high=True, initial_value=False)
+
 
         read_params = self.read_registers()
         
@@ -232,17 +234,17 @@ class sx126x():
 
         if mode == "conf":
             self.conf_mode = True
-            GPIO.output(self.M0, False)
-            GPIO.output(self.M1, True)
+            self.M0.off()
+            self.M1.on()
         elif mode == "wor":
-            GPIO.output(self.M0, True)
-            GPIO.output(self.M1, False)
+            self.M0.on()
+            self.M1.off()
         elif mode == "sleep":
-            GPIO.output(self.M0, True)
-            GPIO.output(self.M1, True)
+            self.M0.on()
+            self.M1.on()
         else: #transmission mode
-            GPIO.output(self.M0, False)
-            GPIO.output(self.M1, False)
+            self.M0.off()
+            self.M1.off()
 
         time.sleep(0.2)
 

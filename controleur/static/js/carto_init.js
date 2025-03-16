@@ -40,7 +40,8 @@ function carto_init() {
   
   map = new L.Map('map', {
     editable: true,
-    center: {lat:48.8, lng:7.84},
+    //center: {lat:48.8, lng:7.84},
+    center: {lat:49.15, lng:4.49},
     zoom: 12,
     layers: [baseLayer]
   });

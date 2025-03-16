@@ -1,6 +1,21 @@
+- maj app.py + main.html + carto_init.js
+- maj tiles moumelon
+
+- tester changement config + reboot -> config réappliquée ?
+
+- tester réception de doublons (avec relai par un capteur)
+
+- tester tiles mourmelon
+
+
+X le controleur ne fait pas de contrôle sur les doublons reçus
+X ajouter le double envoi de messages
+- la config n'est pas enregistrée / rechargée au démarrage
+
 
 
 version future :
+- maj script gps
 
 - update les coordonnées des points détections quand le module got_pong
 
