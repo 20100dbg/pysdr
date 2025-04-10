@@ -60,6 +60,9 @@ int main(int argc, char **argv)
     params.endless = true;
     params.repeats = 64;
 
+    //
+    //stepFreq = actual_samplerate / params.N;
+
     // Set up RTL-SDR device.
     Rtlsdr rtldev(params.dev_index);
 

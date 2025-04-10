@@ -49,6 +49,6 @@ def build_message(msg_type, msg_id, msg_from, data=b''):
     msg += b'\x00' * (sub_packet_size - len(msg))
     return msg
 
-def bytes_to_str(arr):
+def bytes_to_hex(arr):
     return ' '.join(['{:02X}'.format(b) for b in arr])
     

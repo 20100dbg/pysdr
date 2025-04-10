@@ -34,7 +34,7 @@ function carto_init() {
   var URL_CARTO = "../tiles"; //dossier local
   //var URL_CARTO = "https://{s}.tile.openstreetmap.org"; //carto online
   
-  var baseLayer = L.tileLayer(URL_CARTO + '/{z}/{x}/{y}.png', { });
+  var baseLayer = L.tileLayer(URL_CARTO + '/{z}/{x}/{y}.png', { nativeZooms: [8] }); //11,12,13,14,15
   heatmapLayer = new HeatmapOverlay(heatmapcfg);
 
   
@@ -43,6 +43,7 @@ function carto_init() {
     //center: {lat:48.8, lng:7.84},
     center: {lat:49.15, lng:4.49},
     zoom: 12,
+    minZoom: 0, //must be smallest zoom available 
     layers: [baseLayer]
   });
   

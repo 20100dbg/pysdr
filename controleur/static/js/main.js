@@ -1,7 +1,8 @@
 const socket = io();
 let update_module_position = false;
-//helpers
 
+
+//helpers
 
 function DateLisible(dateObj)
 {
@@ -46,7 +47,9 @@ function pretty_frq(frq) {
   return left + '.' + right + 'M';
 }
 
-//helpers
+//end helpers
+
+
 
 let carto_min_date = 0, carto_max_date = 0;
 let carto_start_range = 0, carto_end_range = 0;
@@ -175,11 +178,11 @@ socket.on("connect", () => {
 });
 
 
-
 socket.on("got_config_ack", function(module_id) {
   modules[module_id]['applied'] = true;
   pop_error("C" + module_id + " configuré");
 });
+
 
 socket.on("got_pong", function(params) {
 
@@ -252,13 +255,6 @@ socket.on("got_frq", function(params) {
 });
 
 
-/*
-socket.on("disconnect", () => {
-  update_etat(false);
-});
-*/
-
-
 // interface
 
 function add_detection_dom(module_id, dt, frq, pwr) {
@@ -271,11 +267,7 @@ function add_detection_dom(module_id, dt, frq, pwr) {
   tpl.innerHTML = '<span class="log_row">'+ log_row +'</span>'
 
   log_detections.insertBefore(tpl.content.firstChild, log_detections.firstChild);
-
-  //log_detections.appendChild(tpl.content.firstChild);
-  //log_detections.scrollTop = log_detections.scrollHeight;
 }
-
 
 
 function show_loader(duree = 1) {
@@ -341,7 +333,7 @@ function set_nb_module()
 function set_module_position(module_id, latitude, longitude)
 {
   let div = document.getElementById("position-" + module_id);
-  div.innerText =  round(latitude, 2) + "/" + round(longitude, 2);
+  div.innerText =  round(latitude, 5) + "/" + round(longitude, 5);
 }
 
 function add_module_dom(module_id)
@@ -356,7 +348,7 @@ function add_module_dom(module_id)
 function get_tpl(module_id)
 {
   return '<div class="line">' +
-        '<span id="name-'+ module_id +'">Capteur '+ module_id +'</span> - ' +
+        '<span id="name-'+ module_id +'">C'+ module_id +'</span> - ' +
         '<span id="position-'+ module_id +'">NL</span>' +
 
         '<span class="buttons">' +

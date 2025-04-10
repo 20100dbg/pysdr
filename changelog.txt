@@ -1,0 +1,7 @@
+08/04/2025
+Tests de fiabilité sur la lib sx126x.py : réception de messages rapides, de plusieurs émetteurs simultanés
+
+10/04/2024
+MAJ de la lib sx126x sur capteur, controlleur, testeur
+MAJ de la lib GPS sur capteur, controlleur
+Ajout / amélioration des logs

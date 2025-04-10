@@ -143,7 +143,7 @@ class VMA430(object):
             self.send_ubx(payload)
             time.sleep(0.4 + _/5)
 
-            packets = self.get_ubx_packet()
+            packets = gps.get_ubx_packet()
 
             for packet in packets:
                 if packet.class_byte == 0x06 and packet.id_byte == 0x24:
@@ -166,7 +166,7 @@ class VMA430(object):
 
             self.send_ubx(payload)
             time.sleep(0.5 + _/5)
-            packets = self.get_ubx_packet()
+            packets = gps.get_ubx_packet()
 
             for packet in packets:
                 if packet.class_byte == 0x05 and packet.id_byte == 0x1:
@@ -193,7 +193,7 @@ class VMA430(object):
         for _ in range(3):
             self.send_ubx(payload)
             time.sleep(0.5 + _/5)
-            packets = self.get_ubx_packet()
+            packets = gps.get_ubx_packet()
 
             for packet in packets:
                 if packet.class_byte == 0x05 and packet.id_byte == 0x1:
@@ -230,7 +230,7 @@ class VMA430(object):
         for _ in range(3):
             self.send_ubx(payload)
             time.sleep(0.5 + _/5)
-            packets = self.get_ubx_packet()
+            packets = gps.get_ubx_packet()
 
             for packet in packets:
                 if packet.class_byte == 0x05 and packet.id_byte == 0x1:
@@ -255,7 +255,7 @@ class VMA430(object):
         for _ in range(3):
             self.send_ubx(payload)
             time.sleep(0.5 + _/5)
-            packets = self.get_ubx_packet()
+            packets = gps.get_ubx_packet()
 
             if self.debug:
                 print("get_message_rate")
@@ -283,7 +283,7 @@ class VMA430(object):
         for _ in range(3):
             self.send_ubx(payload)
             time.sleep(0 + _/5)
-            packets = self.get_ubx_packet()
+            packets = gps.get_ubx_packet()
 
             if self.debug:
                 self.debug_packets(packets)
@@ -309,7 +309,7 @@ class VMA430(object):
         for _ in range(3):
             self.send_ubx(payload)
             time.sleep(0.5 + _/5)
-            packets = self.get_ubx_packet()
+            packets = gps.get_ubx_packet()
 
             for packet in packets:
 
@@ -352,7 +352,7 @@ class VMA430(object):
         for _ in range(3):
             self.send_ubx(payload)
             time.sleep(0.5 + _/5)
-            packets = self.get_ubx_packet()
+            packets = gps.get_ubx_packet()
 
             for packet in packets:
                 if packet.class_byte == 0x05 and packet.id_byte == 0x01:
@@ -385,7 +385,7 @@ class VMA430(object):
 
                 self.send_ubx(data + [CK_A, CK_B])
                 time.sleep(0.3 + _/5)
-                packets = self.get_ubx_packet()
+                packets = gps.get_ubx_packet()
 
                 for packet in packets:
                     if packet.class_byte == 0x05 and packet.id_byte == 0x01:
@@ -543,9 +543,9 @@ class VMA430(object):
 
     def listen_loop(self):
         while self.running_listen:
-            packets = self.get_ubx_packet()
+            packets = gps.get_ubx_packet()
             for p in packets:
-                self.handle_ubx_packet(p)
+                gps.handle_ubx_packet(p)
 
             time.sleep(0.5)
 

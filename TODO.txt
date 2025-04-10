@@ -1,31 +1,60 @@
-- maj app.py + main.html + carto_init.js
-- maj tiles moumelon
-
-- tester changement config + reboot -> config réappliquée ?
-
-- tester réception de doublons (avec relai par un capteur)
-
-- tester tiles mourmelon
-
-
-X le controleur ne fait pas de contrôle sur les doublons reçus
-X ajouter le double envoi de messages
-- la config n'est pas enregistrée / rechargée au démarrage
-
-
-
 version future :
-- maj script gps
+
+sx126x
+- surveiller le retour de config. Si vide / différent de C1 00 09 -> rédémarrage ?
+
+capteur
+- ajouter le timestamp de détection dans la trame
+- vérifier l'envoi du message ACK lors de l'application d'une nouvelle configuration
+
+
+dashboard
+- problème affichage tuiles (que sur mobile ?)
+-- voir plugin Leaflet.LimitZoom pour étirer les tuiles sur plusieurs zooms
+
+- bouton centrer sur les points
+
+- emettre une alerte permanente en cas de perte connexion wifi
 
 - update les coordonnées des points détections quand le module got_pong
+-- a verifier
 
-- vérifier la normalisation du timestamp
-
-- normaliser lat/lng : latitude/longitude
-
-- passer les arguments explicitement ?
+- tri par date HS
 
 - générer la heatmap en fonction du power
+- passer les arguments explicitement ?
+- vérifier la normalisation du timestamp
+
+
+
+master
+- ajouter GPS sur le master -> plotter la patrouille
+
+- redirection https -> http
+
+
+- TDOA
+-- ajouter message TDOA, enregistrer dans une table spécifique
+
+
+- rtl_power_fttw
+-- la valeur en db correspond au SNR ? RSSI ? etc
+-- modifier le plan pour scanner plus vite
+-- calculer le niveau de bruit moyen -> calculer squelch auto
+
+
+
+
+
+
+- mutualiser l'envoi de plusieurs alertes par paquet LoRa
+
+- surveiller le nombre de détection/s
+-- agrandir le range_duplicate
+-- allonger le timeout
+-- baisser la sensi
+
+
 
 
 
@@ -34,6 +63,7 @@ version future :
 - récupérer le niveau de batterie
 
 - modification des parametres scanner en live avec socket process ?
+
 - ignorer gamme frq
 
 - onglet stats
@@ -43,4 +73,13 @@ version future :
 location /tiles/ {
     autoindex on;
     alias /home/rpi/dia/tiles/;
+}
+
+
+server {
+        
+        listen 443 default_server;
+        listen [::]:443 default_server;
+        server_name _;
+        return 301 http://$host$request_uri;
 }

@@ -167,9 +167,9 @@ def callback_lora(data):
     ##################################
 
 
-    #print(f"received : {bytes_to_str(data)}")
     if debug:
-        print(f"type={msg_type} id={msg_id} from={msg_from}", end=" ", flush=True)
+        print(f"received : {bytes_to_hex(data)}", flush=True)
+        #print(f"type={msg_type} id={msg_id} from={msg_from}", flush=True)
 
     #A module detected something
     if msg_type == MsgType.FRQ.value:
