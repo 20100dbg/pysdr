@@ -1,41 +1,15 @@
-version future :
-
-sx126x
-- surveiller le retour de config. Si vide / différent de C1 00 09 -> rédémarrage ?
-
 capteur
 - ajouter le timestamp de détection dans la trame
-- vérifier l'envoi du message ACK lors de l'application d'une nouvelle configuration
-
 
 dashboard
-- problème affichage tuiles (que sur mobile ?)
--- voir plugin Leaflet.LimitZoom pour étirer les tuiles sur plusieurs zooms
-
-- bouton centrer sur les points
-
-- emettre une alerte permanente en cas de perte connexion wifi
-
-- update les coordonnées des points détections quand le module got_pong
--- a verifier
-
 - tri par date HS
 
 - générer la heatmap en fonction du power
 - passer les arguments explicitement ?
 - vérifier la normalisation du timestamp
 
-
-
 master
-- ajouter GPS sur le master -> plotter la patrouille
-
 - redirection https -> http
-
-
-- TDOA
--- ajouter message TDOA, enregistrer dans une table spécifique
-
 
 - rtl_power_fttw
 -- la valeur en db correspond au SNR ? RSSI ? etc
@@ -43,11 +17,30 @@ master
 -- calculer le niveau de bruit moyen -> calculer squelch auto
 
 
+- gestion capteurs
+    messages PING
+    - juste PING
+    - request CONF
+    - request GPS
+
+    loading lors de l'envoi de MSG
 
 
 
 
-- mutualiser l'envoi de plusieurs alertes par paquet LoRa
+
+- TDOA
+-- ajouter message TDOA, enregistrer dans une table spécifique
+
+
+automatiser le changement de carto
+- upload & unzip tiles
+- update le nativeZooms de la baseLayer
+- update 
+
+
+revoir l'archivage des messages sur controleur + capteur
+
 
 - surveiller le nombre de détection/s
 -- agrandir le range_duplicate
@@ -55,8 +48,7 @@ master
 -- baisser la sensi
 
 
-
-
+chiffrer les paquets
 
 - configuration channel
 - support de DSD
@@ -73,13 +65,4 @@ master
 location /tiles/ {
     autoindex on;
     alias /home/rpi/dia/tiles/;
-}
-
-
-server {
-        
-        listen 443 default_server;
-        listen [::]:443 default_server;
-        server_name _;
-        return 301 http://$host$request_uri;
 }

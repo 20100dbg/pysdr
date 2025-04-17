@@ -1,4 +1,3 @@
-from helper import *
 import os
 import random
 import struct
@@ -6,6 +5,7 @@ import sx126x
 import sys
 import threading
 import time
+from helper import *
 from scanner import *
 from gps import *
 
@@ -13,7 +13,7 @@ from gps import *
 # TYPE (1) - ID (1) - TO (1) - SIZE (1) - PAYLOAD (variable size) - CHECKSUM (2)
 
 
-def listen_loop(callback, idx_payload_size, headers_size, sync_word):
+def listen_loop(callback, idx_payload_size, header_footer_size, sync_word):
     """ Check if data is received """
     
     buffer_receive = b''
@@ -34,7 +34,7 @@ def listen_loop(callback, idx_payload_size, headers_size, sync_word):
 
                 if len(buffer_receive) > idx_payload_size:
                     expected_size = buffer_receive[idx_payload_size]
-                    expected_size += headers_size
+                    expected_size += header_footer_size
 
                     if len(buffer_receive) >= expected_size:
                         
@@ -65,7 +65,6 @@ def listen_loop(callback, idx_payload_size, headers_size, sync_word):
 
 
 
-
 def callback_lora(data):
     """ Handles every message received from LoRa """
    
@@ -74,16 +73,22 @@ def callback_lora(data):
         log(f"callback_lora {bytes_to_hex(data)}")
 
 
-    (msg_type, msg_id, msg_to, payload_size) = extract_header(data)
-    payload = data[4:payload_size+4]
-    checksum = data[-2:]
 
-    key = build_key_history(data)
+    pkt = Packet.read(data)
 
-    if key not in params.receive_history:
-        params.receive_history[key] = time.time()
-    else:
+    msg_type = pkt.type
+    msg_id = pkt.num
+    msg_to = pkt.from_to
+    payload = pkt.payload
+
+
+    """
+    msg_history = get_history_msg(msg_type=msg_type, msg_id=msg_id, msg_from_to=msg_to)
+
+    if msg_history:
+        print("msg discarded")
         return None
+    """
     
 
     #Local node is not recipient, lets re-send it 
@@ -110,12 +115,14 @@ def callback_lora(data):
         #Send back ACK + config
         data = int_to_bytes(params.frq_start, 2) + int_to_bytes(params.frq_end, 2) + struct.pack("b", params.threshold)
         
-
         if params.debug:
             print(f"Send ACK CONF_SCAN : {bytes_to_hex(data)}")
             log(f"Send ACK CONF_SCAN : {bytes_to_hex(data)}")
 
-        send_lora(build_message(MsgType.ACK.value, msg_id, params.local_addr, data))
+
+        pkt = Packet(MsgType.ACK.value, msg_id, params.local_addr, data)
+        add_history(pkt)
+        send_lora(pkt.build())
 
 
     #Update LoRa config
@@ -126,25 +133,31 @@ def callback_lora(data):
         air_data_rate = bytes_to_int(payload[1:3]) / 10
 
         lora.set_config(channel=channel,air_data_rate=air_data_rate)        
-        send_lora(build_message(MsgType.ACK.value, msg_id, params.local_addr))
+
+        pkt = Packet(MsgType.ACK.value, msg_id, params.local_addr)
+        add_history(pkt)
+        send_lora(pkt.build())
 
 
     elif msg_type == MsgType.PING.value:
 
         #receive broadcast PING (proabably from tester)
         if msg_to == 255:
-            send_lora(build_message(MsgType.ACK.value, msg_id, params.local_addr))
-        
+
+            pkt = Packet(MsgType.ACK.value, msg_id, params.local_addr)
+            add_history(pkt)
+            send_lora(pkt.build())
+
             if params.debug:
-                prin(f"Send ACK PING TESTER")
+                print(f"Send ACK PING TESTER")
                 log(f"Send ACK PING TESTER")
 
         else:
             is_scanning = 1 if scanner.scanning else 0
 
             data = b''
-            data += struct.pack("d", current_lat)
-            data += struct.pack("d", current_lng)
+            data += struct.pack("d", params.current_lat)
+            data += struct.pack("d", params.current_lng)
             data += int_to_bytes(is_scanning, 1)
             data += int_to_bytes(params.frq_start, 2) 
             data += int_to_bytes(params.frq_end, 2)
@@ -154,14 +167,16 @@ def callback_lora(data):
                 print(f"Send ACK PING")
                 log(f"Send ACK PING")
 
-            send_lora(build_message(MsgType.ACK.value, msg_id, params.local_addr, data))
+            pkt = Packet(MsgType.ACK.value, msg_id, params.local_addr, data)
+            add_history(pkt)
+            send_lora(pkt.build())
 
 
 
 def relay_message(data):
     """ Anytime we need to send back a message """
 
-    (msg_type, msg_id, msg_to, payload_size) = extract_header(data)
+    (msg_type, msg_id, msg_to) = extract_header(data)
 
     #Check for duplicates
     key = build_key_history(data)
@@ -174,7 +189,6 @@ def relay_message(data):
         if params.debug:
             print(f"Relai message : {bytes_to_hex(data)}")
             log(f"Relai message : {bytes_to_hex(data)}")
-
 
 
     
@@ -205,14 +219,41 @@ def increment_msg_id():
 
 
 
+def get_history_msg(msg_type=None, msg_id=None, msg_from_to=None):
+    for hist_line in params.receive_history:
+
+        if (not msg_type or hist_line["packet"].type == msg_type) and \
+            (not msg_id or hist_line["packet"].num == msg_id) and \
+            (not msg_from_to or hist_line["packet"].from_to == msg_from_to):
+            return hist_line
+
+    return None
+
+
+
+def add_history(pkt):
+    msg_time = time.time()
+    direction = "send"
+
+    if params.debug:
+        print(f"add_history {pkt.type} {pkt.num} {pkt.from_to}")
+        log(f"add_history {pkt.type} {pkt.num} {pkt.from_to}")
+
+
+    params.receive_history.append({"packet": pkt,
+                                    "time": msg_time,
+                                    "direction": direction})
+
+
+
+
 #Entry point
 
 if len(sys.argv) != 2:
     print(f"Usage : python {sys.argv[0]} <ID CAPTEUR>")
     exit(1)
 
-
-#General
+global params
 params = Parameters(debug=True)
 params.local_addr = int(sys.argv[1])
 
@@ -228,23 +269,24 @@ else:
 lora = sx126x.sx126x(port="/dev/ttyS0", debug=params.debug)
 
 if not lora.ready:
-    #Todo
-    #fermer - réouvrir l'objet ?
-    #reboot ?
-    pass
+    print("LoRa NOT ready ! reboot...")
+    log("LoRa NOT ready ! reboot...")
+    os.system("sudo reboot")
 
 lora.set_config(channel=params.channel,network=0, tx_power=22, 
                 air_data_rate=params.air_data_rate, 
                 sub_packet_size=params.sub_packet_size)
 
 is_running = True
+
 t_receive = threading.Thread(target=listen_loop, 
-        args=[callback_lora, params.idx_payload_size, params.headers_size, params.sync_word])
+        args=[callback_lora, params.idx_payload_size, 
+        params.header_size + params.footer_size, params.sync_word])
 t_receive.start()
 
 
 #Scanner init
-scanner = scanner(callback=callback_scanner, debug=params.debug)
+scanner = scanner(callback=callback_scanner, debug=False)
 
 #frq_start=400, frq_end=420, gain=49, sample_rate=2000000, ppm=0, repeats=64, threshold=-10, bins=512, dev_index=0
 scanner.set_config(frq_start=params.frq_start, frq_end=params.frq_end, threshold=params.threshold)
@@ -254,13 +296,13 @@ scanner.activate(blocking=False)
 #GPS init
 
 gps = VMA430()
-gps.begin(port="/dev/ttyAMA2", baudrate=9600, debug=params.debug)
+gps.begin(port="/dev/ttyAMA2", baudrate=9600, debug=False)
 gps.set_nav_mode('stationary')
 
 last_gps = 0
 gps_online = gps.activate_poll()
 
-#Main loop, requesting GPS location
+#Main loop
 while True:
 
     #gps
@@ -269,6 +311,9 @@ while True:
         #keep trying to set it online
         if not gps_online:
             gps_online = gps.activate_poll()
+
+            if params.debug:
+                print(f"gps_online : {gps_online}")
 
         else:
             #when online, get position
@@ -328,14 +373,17 @@ while True:
 
             data = b''
             data += int_to_bytes(frq_max, 4)
-            pwr = abs(int(pwr_max * 100))
-            data += int_to_bytes(pwr, 2)
+            #pwr = abs(int(pwr_max * 100))
+            data += struct.pack("e", pwr_max)
 
             if params.debug:
                 print(f"sending {frq_max} / {pwr_max}")
                 log(f"sending {frq_max} / {pwr_max}")
 
-            send_lora(build_message(MsgType.FRQ.value, params.local_msg_id, params.local_addr, data))
+            pkt = Packet(MsgType.FRQ.value, params.local_msg_id, params.local_addr, data)
+            add_history(pkt)
+            send_lora(pkt.build())
+
             increment_msg_id()
 
 
@@ -356,11 +404,14 @@ while True:
         if diff_time > 60:
             del params.relay_history[key]
 
-
+    """
     #clean receive_history queue
     for key, val in params.receive_history.copy().items():
         if time.time() - val > params.delay_receive: 
             del params.receive_history[key]
+
+    params.receive_history = [x for x in params.receive_history if x[]]
+    """
 
     time.sleep(0.1)
 

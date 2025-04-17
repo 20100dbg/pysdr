@@ -3,7 +3,6 @@ import time
 import os
 from enum import Enum
 
-
 class MsgType(Enum):
     PING = 1
     FRQ = 2
@@ -11,6 +10,91 @@ class MsgType(Enum):
     CONF_LORA = 4
     ACK = 5
     ERROR = 6
+    DETECT = 7
+
+class Packet(object):
+    """ Define a packet to send/receive with LoRa """
+
+    TYPE_SIZE = 1
+    NUM_SIZE = 1
+    FROM_TO_SIZE = 1
+    PAYLOAD_SIZE_SIZE = 1
+    SYNC_WORD = b"\xB5\x62"
+
+    IDX_PAYLOAD_SIZE = len(SYNC_WORD) + TYPE_SIZE + NUM_SIZE + FROM_TO_SIZE
+    HEADER_SIZE = len(SYNC_WORD) + TYPE_SIZE + NUM_SIZE + FROM_TO_SIZE + PAYLOAD_SIZE_SIZE
+    FOOTER_SIZE = 2
+
+
+    def __init__(self, type, num, from_to, payload=b""):
+        self.type = type
+        self.num = num
+        self.from_to = from_to
+        self.payload = payload
+
+        data = self.build()
+        self.checksum = data[-2:]
+        self.valid = True
+
+    @staticmethod
+    def read(data):
+
+        idx = len(Packet.SYNC_WORD)
+        type = bytes_to_int(data[idx:idx+Packet.TYPE_SIZE])
+        
+        idx += Packet.TYPE_SIZE
+        num = bytes_to_int(data[idx:idx+Packet.NUM_SIZE])
+        
+        idx += Packet.NUM_SIZE
+        from_to = bytes_to_int(data[idx:idx+Packet.FROM_TO_SIZE])
+        
+        idx += Packet.FROM_TO_SIZE
+        payload_size = bytes_to_int(data[idx:idx+Packet.PAYLOAD_SIZE_SIZE])
+        
+        idx += Packet.PAYLOAD_SIZE_SIZE
+        payload = data[idx:idx+payload_size]
+        checksum = data[-2:]
+
+        pkt = Packet(type, num, from_to, payload)
+        pkt.valid = pkt.checksum == checksum
+
+        return pkt
+
+    def to_string(self):
+
+        type_name = "UNKNOWN"
+        for type in MsgType:
+            if self.type == type.value:
+                type_name = type.name
+
+        return f"""type={type_name} - {self.type}  num={self.num} from_to={self.from_to}
+payload={self.payload}
+checksum={self.checksum} valid={self.valid}"""
+    
+
+    def build(self):
+        """ Create a byte array with specified header data """
+        msg = self.SYNC_WORD
+        msg += int_to_bytes(self.type, Packet.TYPE_SIZE)
+        msg += int_to_bytes(self.num, Packet.NUM_SIZE)
+        msg += int_to_bytes(self.from_to, Packet.FROM_TO_SIZE)
+        msg += int_to_bytes(len(self.payload), Packet.PAYLOAD_SIZE_SIZE)
+        msg += self.payload
+        checksum = self.calculate_checksum(msg[2:])
+        msg += int_to_bytes(checksum[0], 1) + int_to_bytes(checksum[1], 1)
+        return msg
+
+
+    def calculate_checksum(self, data):
+        """Checksum. data needs to be all the packet, except SYNC_WORD, """
+        CK_A, CK_B = 0, 0
+
+        for i in range(len(data)):
+            CK_A = CK_A + data[i]
+            CK_B = CK_B + CK_A
+
+        return [CK_A & 0xFF, CK_B & 0xFF]
+
 
 class Parameters(object):
     """docstring for Parameters"""
@@ -21,7 +105,7 @@ class Parameters(object):
         self.debug = debug
         #
         self.detection_history = {}
-        self.receive_history = {}
+        self.receive_history = []
         self.start_time = time.time()
         self.time_set = False
 
@@ -29,8 +113,10 @@ class Parameters(object):
         self.channel = 18
         self.air_data_rate = 2.4
         self.sub_packet_size = 32
-        self.idx_payload_size = 3
-        self.headers_size = 6
+        self.idx_payload_size = 5
+        self.header_size = 6
+        self.footer_size = 2
+
         self.sync_word = b"\xB5\x62"
         #
         self.local_addr = None
@@ -82,24 +168,11 @@ class Parameters(object):
 
 
 def find_sync(data, sync_word, idx_start=0):
-    if not data:
-        return -1
-
     for idx in range(idx_start, len(data)):
         if data[idx:idx+len(sync_word)] == sync_word:
             return idx
 
     return -1
-
-
-def calculate_checksum(data):
-    CK_A, CK_B = 0, 0
-
-    for i in range(len(data)):
-        CK_A = CK_A + data[i]
-        CK_B = CK_B + CK_A
-
-    return (CK_A & 0xFF, CK_B & 0xFF)
 
 
 def clean_frq(frq, step=5):
@@ -123,38 +196,9 @@ def bytes_to_int(b):
     return int.from_bytes(b)
 
 
-def build_key_history(msg):
-    """ Create a dictionnary key based on header data """
-
-    msg_type, msg_id, msg_to = extract_header(msg)
-    return str(msg_to) + '-' + str(msg_id)
-
-
-def extract_header(data):
-    """ Extract header fields from message """
-    
-    return (data[0], #msg_type
-            data[1], #msg_id
-            data[2], #msg_to
-            data[3]) #msg_size
-
-
-def build_message(msg_type, msg_id, msg_to, data=b''):
-    """ Create a byte array with specified header data """
-
-    msg = b''
-    msg += int_to_bytes(msg_type, 1)
-    msg += int_to_bytes(msg_id, 1)
-    msg += int_to_bytes(msg_to, 1)
-    msg += int_to_bytes(len(data), 1)
-    msg += data
-    return msg
-
-
 def bytes_to_hex(b):
     """ Get bytes to proper hex notation """
     return ' '.join(['{:02X}'.format(x) for x in b])
-
 
 
 def log(data):

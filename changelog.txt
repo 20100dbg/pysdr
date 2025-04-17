@@ -1,7 +1,25 @@
 08/04/2025
 Tests de fiabilité sur la lib sx126x.py : réception de messages rapides, de plusieurs émetteurs simultanés
 
-10/04/2024
+10/04/2025
 MAJ de la lib sx126x sur capteur, controlleur, testeur
 MAJ de la lib GPS sur capteur, controlleur
 Ajout / amélioration des logs
+
+
+15/04/2025
+Resolution de l'incompatibilité entre gpiozero et flask
+
+
+16/04/2025
+Ajout de la classe Packet
+
+
+17/04/2025
+Affichage d'une alerte en cas de panne connexion serveur (wifi ou socketIO)
+Le capteur reboot si la carte lora ne peut pas être initialisée
+Ajout/maj des instructions d'installation
+Ajout du plugin Leaflet.LimitZoom pour combler les zooms manquants
+Le boitier controleur est ploté sur la carte
+Bouton centrer sur la carto sur le controleur
+

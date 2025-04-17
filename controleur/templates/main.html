@@ -24,7 +24,7 @@
   </head>
   <body>
 
-<div class="top" id="etat"></div>
+<div class="top red" id="etat">Connection perdue !</div>
 <div class="alert" role="alert" id="alert"></div>
 
 <div class="config" id="config_module">
@@ -89,6 +89,7 @@
 
     <button onclick="get_search_results();">Appliquer filtres</button>
     <button onclick="remove_filters();">Retirer filtres</button>
+    <button onclick="center_master();">Recentrer la carte</button>
     <table id="myTable" class="display"></table>
 
   </div>
@@ -116,8 +117,8 @@
 <script type="text/javascript">
   let modules = {};
   let detections = [];
-  let init_detections = {};// {{detections}};
-  let init_modules = {};//{{modules}};
+  let init_detections = {{detections}};
+  let init_modules = {{modules}};
 </script>
 
 

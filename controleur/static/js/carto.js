@@ -65,6 +65,17 @@ function carto_import_modules(_modules)
 
 /*** Misc ***/
 
+function center_master() {
+  center_view(master_layer._latlng.lat, master_layer._latlng.lng);
+}
+
+
+function center_view(latitude, longitude) {
+  let zoom = 8;
+  map.setView([latitude, longitude], zoom);
+}
+
+
 function get_min_max_date(...tab)
 {
   let min, max;
@@ -89,6 +100,17 @@ function get_min_max_date(...tab)
 
 /*** Draw ***/
 
+
+function set_master_position(latitude, longitude) {
+
+  if (master_layer == null) {
+    master_layer = draw_point([latitude, longitude], {}, 4, "#0000FF");
+  }
+  else {
+    master_layer.setLatLng([latitude, longitude])
+
+  }
+}
 
 //Draw a point
 function draw_point(coordPoint, data = {}, taille = 4, couleur = "#000000")

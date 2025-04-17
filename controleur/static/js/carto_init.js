@@ -1,5 +1,6 @@
 let map, heatmapLayer;
 let modules_layers = [];
+let master_layer = null;
 
 //current slider width in percent. Is modified elsewhere
 let sliderSpan = 100;
@@ -34,18 +35,19 @@ function carto_init() {
   var URL_CARTO = "../tiles"; //dossier local
   //var URL_CARTO = "https://{s}.tile.openstreetmap.org"; //carto online
   
-  var baseLayer = L.tileLayer(URL_CARTO + '/{z}/{x}/{y}.png', { nativeZooms: [8] }); //11,12,13,14,15
+  var baseLayer = L.tileLayer(URL_CARTO + '/{z}/{x}/{y}.png', { 
+    nativeZooms: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] });
   heatmapLayer = new HeatmapOverlay(heatmapcfg);
 
   
   map = new L.Map('map', {
     editable: true,
     //center: {lat:48.8, lng:7.84},
-    center: {lat:49.15, lng:4.49},
-    zoom: 12,
-    minZoom: 0, //must be smallest zoom available 
+    //center: {lat:, lng:4.49},
+    //zoom: 8,
+    minZoom: 1,
     layers: [baseLayer]
-  });
+  }).setView([48.8, 7.84], 8);
   
 
   let layerControl = L.control.layers({'Fond carto': baseLayer }).addTo(map);

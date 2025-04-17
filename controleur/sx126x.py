@@ -1,7 +1,15 @@
 import serial
 import threading
 import time
-from gpiozero import LED, OutputDevice
+from gpiozero import LED
+
+
+#Resolve gpiozero hanging when used with flask
+from gpiozero.pins.pigpio import PiGPIOFactory
+factory = PiGPIOFactory(host='192.168.137.2')
+
+#self.M0 = LED("GPIO22", pin_factory=factory)
+
 
 class sx126x():
 
@@ -45,8 +53,8 @@ class sx126x():
         self.debug = debug
         self.ready = True
 
-        self.M0 = LED("GPIO22")
-        self.M1 = LED("GPIO27")
+        self.M0 = LED("GPIO22", pin_factory=factory)
+        self.M1 = LED("GPIO27", pin_factory=factory)
 
         self.serial = self.__open_serial(port=self.serial_params["port"], timeout=1)
         

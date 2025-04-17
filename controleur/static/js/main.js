@@ -1,5 +1,4 @@
 const socket = io();
-let update_module_position = false;
 
 
 //helpers
@@ -173,10 +172,14 @@ function send_config_module(module_id, frq_start, frq_end, threshold) {
 
 
 socket.on("connect", () => {
-  //update_etat(true);
-  socket.emit("set_time", Date.now());
+  update_etat(true);
+  //socket.emit("set_time", Date.now());
 });
 
+
+socket.on("disconnect", () => {
+  update_etat(false);
+});
 
 socket.on("got_config_ack", function(module_id) {
   modules[module_id]['applied'] = true;
@@ -184,8 +187,14 @@ socket.on("got_config_ack", function(module_id) {
 });
 
 
+socket.on("set_master_position", function(params) {
+  set_master_position(params["latitude"], params["longitude"]);
+});
+
+
 socket.on("got_pong", function(params) {
 
+  //update capteur
   let module_id = params["module_id"];
   modules[module_id].latitude = params["latitude"];
   modules[module_id].longitude = params["longitude"];  
@@ -203,9 +212,10 @@ socket.on("got_pong", function(params) {
     draw_heatmap(detections);
   }
 
+  //update capteur position
   let layer = get_module_layer(module_id);
 
-  if (layer != null && update_module_position) {
+  if (layer != null) {
 
     //delete layer from map
     layer.remove();
@@ -213,15 +223,10 @@ socket.on("got_pong", function(params) {
     //delete layer from array
     let idx = modules_layers.indexOf(layer);
     modules_layers.splice(idx, 1);
-
-    carto_import_modules(modules);
-    set_module_position(module_id, params["latitude"], params["longitude"]);
-
   }
-  else if (layer == null) {
-    carto_import_modules(modules);
-    set_module_position(module_id, params["latitude"], params["longitude"]);
-  }
+
+  carto_import_modules(modules);
+  set_module_position(module_id, params["latitude"], params["longitude"]);
 
   pop_error("C" + module_id + " répond");
 });
@@ -296,18 +301,8 @@ function update_etat(etat)
 {
   let div_etat = document.getElementById('etat');
 
-  if (etat)
-  {
-    div_etat.classList.remove('red');
-    div_etat.classList.add('green');
-    div_etat.innerText = "Wifi connecté"
-  }
-  else
-  {
-    div_etat.classList.remove('green');
-    div_etat.classList.add('red');
-    div_etat.innerText = "! Wifi déconnecté !"
-  }
+  if (etat) div_etat.style.display = 'none';
+  else div_etat.style.display = 'block';
 }
 
 //gestion module
