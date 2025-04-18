@@ -10,7 +10,11 @@ class MsgType(Enum):
     CONF_LORA = 4
     ACK = 5
     ERROR = 6
-    DETECT = 7
+
+    DETECT = 7 #tester envoi frq + timestamp
+    REQUEST_GPS = 8
+    REQUEST_CONF = 9
+
 
 class Packet(object):
     """ Define a packet to send/receive with LoRa """

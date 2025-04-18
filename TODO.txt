@@ -18,6 +18,8 @@ master
 - redirection https -> http
 
 
+GPS : si nofix, renvoyer la position 0/0
+
 
 - gestion capteurs
     messages PING

@@ -152,6 +152,27 @@ def reset_db(args):
 
 
 
+
+
+@socketio.on('request_gps')
+def request_gps(module_id):
+    module_id = int(module_id)
+
+    pkt = Packet(MsgType.REQUEST_GPS.value, params.local_msg_id, module_id)
+    add_history(pkt)
+    lora.send_bytes(pkt.build())
+
+
+@socketio.on('request_conf')
+def request_conf(module_id):
+    module_id = int(module_id)
+
+    pkt = Packet(MsgType.REQUEST_CONF.value, params.local_msg_id, module_id)
+    add_history(pkt)
+    lora.send_bytes(pkt.build())
+
+
+
 ##################
 #
 # LoRa
@@ -341,7 +362,7 @@ def gps_loop():
                 params.current_lat = gps.location.latitude
                 params.current_lng = gps.location.longitude
                 socketio.emit('set_master_position', {"latitude": params.current_lat, "longitude": params.current_lng})
-                
+
 
             if not params.time_set and gps.utc_time.datetime and gps.utc_time.valid:
 
