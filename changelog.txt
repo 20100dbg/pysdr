@@ -23,3 +23,7 @@ Ajout du plugin Leaflet.LimitZoom pour combler les zooms manquants
 Le boitier controleur est ploté sur la carte
 Bouton centrer sur la carto sur le controleur
 
+
+18/04/2025
+Calcul du niveau de bruit moyen
+Travail sur l'ajustement vitesse/précision 

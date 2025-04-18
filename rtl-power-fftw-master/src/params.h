@@ -30,10 +30,9 @@ class Params {
 public:
   Params(int argc, char **argv);
 
-  int threshold = -10;
   int N = 512;
   int dev_index = 0;
-  int gain = 372;
+  int gain = 37;
   int64_t cfreq = 1420405752;
   int64_t startfreq = 0;
   int64_t stopfreq = 0;
@@ -66,5 +65,7 @@ public:
   std::string freq_file; // name with .frq extension
   std::string meta_file; // name with .met extension
 };
+
+
 
 #endif // PARAMS_H

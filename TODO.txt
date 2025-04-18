@@ -8,13 +8,15 @@ dashboard
 - passer les arguments explicitement ?
 - vérifier la normalisation du timestamp
 
+
+- gestion des capteurs
+-- case a cocher conf -> en attente reponse, probleme, ok
+-- timestamp dernier msg
+-- pour debug : derniers msg reçus
+
 master
 - redirection https -> http
 
-- rtl_power_fttw
--- la valeur en db correspond au SNR ? RSSI ? etc
--- modifier le plan pour scanner plus vite
--- calculer le niveau de bruit moyen -> calculer squelch auto
 
 
 - gestion capteurs
@@ -26,7 +28,7 @@ master
     loading lors de l'envoi de MSG
 
 
-
+rtl_power si manque de précision (surtout sur les fréquences rondes) : ajouter de l'overmap
 
 
 - TDOA
@@ -66,3 +68,7 @@ location /tiles/ {
     autoindex on;
     alias /home/rpi/dia/tiles/;
 }
+
+
+
+iw dev wlan0 set power_save off

@@ -77,16 +77,20 @@ Plan::Plan(Params& params_, int actual_samplerate_) :
     }
   }
 
+  int hops = 0;
   // Make a plan of frequency hopping.
   // We're stuffing a vector full of frequencies that we wish to eventually tune to.
   if (params.freq_hopping_isSet) {
+
     double min_overhang = actual_samplerate*params.min_overlap/100;
-    int hops = ceil((double(params.stopfreq - params.startfreq) - min_overhang) / (double(actual_samplerate) - min_overhang));
+
+    hops = ceil((double(params.stopfreq - params.startfreq) - min_overhang) / (double(actual_samplerate) - min_overhang));
+    std::cout << "hops : " << hops << std::endl;
+    
     if (hops > 1) {
       int overhang = (int64_t(hops)*actual_samplerate - (params.stopfreq - params.startfreq)) / (hops - 1);
       freqs_to_tune.push_back(params.startfreq + actual_samplerate/2.0);
 
-      //Mmmm, thirsty? waah-waaah...
       for (int hop = 1; hop < hops; hop++) {
         freqs_to_tune.push_back(freqs_to_tune.back() + actual_samplerate - overhang);
       }
@@ -98,7 +102,9 @@ Plan::Plan(Params& params_, int actual_samplerate_) :
   else {
     freqs_to_tune.push_back(params.cfreq);
   }
+
 }
+
 
 
 Acquisition::Acquisition(const Params& params_,
@@ -214,31 +220,29 @@ void Acquisition::run() {
 }
 
 
+
 void Acquisition::write_data() const {
 
-  std::ofstream binfile;
+  //std::ofstream binfile;
   double pwrdb = 0.0;
-  float fpwrdb = 0.0;
   double freq = 0.0;
+  int fast_factor = 2; //1 = slower, more precise
 
   //Interpolate the central point, to cancel DC bias.
   data.pwr[params.N/2] = (data.pwr[params.N/2 - 1] + data.pwr[params.N/2+1]) / 2;
 
-  for (int i = 0; i < params.N; i++) {
+  for (int i = 0; i < params.N; i+=fast_factor) {
     freq = tuned_freq + (i - params.N/2.0) * actual_samplerate / params.N;
-    if( params.linear ) {
-      pwrdb = (data.pwr[i] / data.repeats_done / params.N / actual_samplerate);
-    }
-    else {
-      pwrdb = 10*log10(data.pwr[i] / data.repeats_done / params.N / actual_samplerate);
+    pwrdb = 10*log10(data.pwr[i] / data.repeats_done / params.N / actual_samplerate);
+
+    //!data.need_calibration && pwrdb > data.threshold
+    if (pwrdb > data.threshold) {
+      std::cout << "~" << freq / 1000000 << "|" << pwrdb << std::endl;
     }
 
-      if (pwrdb > params.threshold) {
-        std::cout << "~" << freq / 1000000 << "|" << pwrdb << std::endl;
-      }
-
+    data.calibration_data += pow(10, pwrdb/10);
+    data.calibration_count++;
   }
-
 }
 
 // Get current date/time, format is "YYYY-MM-DD HH:mm:ss UTC"

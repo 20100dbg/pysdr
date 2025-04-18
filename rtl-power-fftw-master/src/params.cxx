@@ -110,8 +110,10 @@ Params::Params(int argc, char** argv) {
     cmd.add( arg_repeats );
     TCLAP::ValueArg<float> arg_gain("g","gain","Receiver gain.",false, gain, "37.2, 49.6");
     cmd.add( arg_gain );
+    /*
     TCLAP::ValueArg<int> arg_threshold("t","threshold","Threshold trigger",false, threshold, "dbm");
     cmd.add( arg_threshold );
+    */
     TCLAP::ValueArg<std::string> arg_freq("f","freq","Center frequency of the receiver or frequency range to scan.",false,"","Hz | Hz:Hz");
     cmd.add( arg_freq );
     TCLAP::ValueArg<int> arg_index("d","device","RTL-SDR device index.",false,dev_index,"device index");
@@ -131,7 +133,7 @@ Params::Params(int argc, char** argv) {
 
     gain = arg_gain.getValue() * 10;
     sample_rate = arg_rate.getValue();
-    threshold = arg_threshold.getValue();
+    //threshold = arg_threshold.getValue();
 
     // Due to USB specifics, buffer length for reading rtl_sdr device
     // must be a multiple of 16384. We have to keep it that way.

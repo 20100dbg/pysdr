@@ -50,6 +50,12 @@ class Datastore {
     fftwf_plan plan;
     std::vector<double> pwr;
 
+    bool need_calibration = true;
+    double average_noise = 0.0;
+    double calibration_data = 0.0;
+    int64_t calibration_count = 0;
+    double threshold = 0.0;
+
     Datastore(const Params& params); //, std::vector<float>& window_values);
     ~Datastore();
 

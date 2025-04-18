@@ -68,7 +68,9 @@ int main(int argc, char **argv)
 
     // Print the available gains and select the one nearest to the requested gain.
     //rtldev.print_gains();
+    //std::cerr << "gain: " << params.gain << std::endl;
     int gain = rtldev.nearest_gain(params.gain);
+    //std::cerr << "Selected nearest available gain: " << gain << " (" << 0.1*gain << " dB)" << std::endl;
     rtldev.set_gain(gain);
 
     // Temporarily set the frequency to params.cfreq, just so that the device does not
@@ -105,6 +107,7 @@ int main(int argc, char **argv)
 
     //Read from device and do FFT
     do {
+
       for (auto iter = plan.freqs_to_tune.begin(); iter != plan.freqs_to_tune.end();) {
         // Begin a new data acquisition.
         Acquisition acquisition(params, rtldev, data, actual_samplerate, *iter);
@@ -127,6 +130,25 @@ int main(int argc, char **argv)
         // Check for interrupts.
         if (checkInterrupt(InterruptState::FinishNow))
           break;
+      }
+
+      
+      if (data.need_calibration) {
+        data.average_noise = 10 * log10(data.calibration_data / data.calibration_count);
+        data.threshold = data.average_noise + 5;
+
+        /*
+        std::cout << "!" << data.calibration_data << std::endl;
+        std::cout << "!" << data.calibration_count << std::endl;
+        
+        std::cout << "!" << data.calibration_data / data.calibration_count << std::endl;
+        std::cout << "!" << log10(data.calibration_data / data.calibration_count) << std::endl;
+
+        std::cout << "!" << data.average_noise << std::endl;
+        std::cout << "!" << data.threshold << std::endl;
+
+        data.need_calibration = false;
+        */
       }
 
       if(params.endless) do_exit = false;   // exactly ! will force to never exit
