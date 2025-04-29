@@ -325,8 +325,15 @@ while True:
                 gps.handle_ubx_packet(p)
 
             if gps.location.latitude and gps.location.longitude:
-                params.current_lat = gps.location.latitude
-                params.current_lng = gps.location.longitude
+                fix_3d, gnss_fix_ok, correction_applied = gps.check_pos_validity()
+
+                if fix_3d:
+                    params.current_lat = gps.location.latitude
+                    params.current_lng = gps.location.longitude
+
+                    if params.debug:
+                        print(f"lat : {params.current_lat} / lng {params.current_lng}")
+                        log(f"lat : {params.current_lat} / lng {params.current_lng}")
 
             if not params.time_set and gps.utc_time.datetime and gps.utc_time.valid:
 
@@ -336,10 +343,6 @@ while True:
 
                 set_system_date(gps.utc_time.datetime)
                 params.time_set = True
-
-            if params.debug:
-                print(f"lat : {params.current_lat} / lng {params.current_lng}")
-                log(f"lat : {params.current_lat} / lng {params.current_lng}")
 
         last_gps = time.time()
 

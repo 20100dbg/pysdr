@@ -305,6 +305,7 @@ class VMA430(object):
         payload = payload + [CK_A, CK_B]
 
         fix_type = {0x00: "No Fix", 0x01: "Dead Reckoning only", 0x02: "2D-Fix", 0x03: "3D-Fix", 0x04: "GNSS + dead reckoning combined", 0x05: "Time only fix" }
+        expected_fix_type = 3
 
         for _ in range(3):
             self.send_ubx(payload)
@@ -314,12 +315,15 @@ class VMA430(object):
             for packet in packets:
 
                 if packet.class_byte == 0x01 and packet.id_byte == 0x07:
-                    gnss_fix_ok = packet.payload[21] & 0x01
-                    correction_applied = packet.payload[21] & 0x02
+                    gnss_fix_ok = packet.payload[21] & 0x01 == 1
+                    correction_applied = packet.payload[21] & 0x02 == 1
 
                     if self.debug:
                         print(f"fix_type = {fix_type[packet.payload[20]]} / gnss_fix_ok={gnss_fix_ok}, correction_applied={correction_applied}")
-                    return fix_type[packet.payload[20]], gnss_fix_ok, correction_applied
+                    
+                    return packet.payload[20] == expected_fix_type, gnss_fix_ok, correction_applied
+
+        return False, False, False
 
 
     def reset_config(self):
@@ -614,8 +618,8 @@ if __name__ == "__main__":
         for p in packets:
             gps.handle_ubx_packet(p)
 
-        if gps.location.longitude and gps.location.latitude:
-            print(f"longitude {gps.location.longitude} / latitude {gps.location.latitude}")
+        if gps.location.latitude and gps.location.longitude:
+            print(f"latitude {gps.location.latitude} / longitude {gps.location.longitude}")
 
         if gps.utc_time.datetime and gps.utc_time.valid:
             print(f"utc_time {gps.utc_time.datetime}")

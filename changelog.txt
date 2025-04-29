@@ -6,14 +6,11 @@ MAJ de la lib sx126x sur capteur, controlleur, testeur
 MAJ de la lib GPS sur capteur, controlleur
 Ajout / amélioration des logs
 
-
 15/04/2025
 Resolution de l'incompatibilité entre gpiozero et flask
 
-
 16/04/2025
 Ajout de la classe Packet
-
 
 17/04/2025
 Affichage d'une alerte en cas de panne connexion serveur (wifi ou socketIO)
@@ -23,7 +20,9 @@ Ajout du plugin Leaflet.LimitZoom pour combler les zooms manquants
 Le boitier controleur est ploté sur la carte
 Bouton centrer sur la carto sur le controleur
 
-
 18/04/2025
 Calcul du niveau de bruit moyen
 Travail sur l'ajustement vitesse/précision 
+
+23/04/2025
+verification du GPS fix avant utilisation des coordonnées

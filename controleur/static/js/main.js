@@ -1,4 +1,26 @@
-const socket = io();
+
+
+//global vars
+let carto_min_date = 0, carto_max_date = 0;
+let carto_start_range = 0, carto_end_range = 0;
+
+let default_frq_start = 400;
+let default_frq_end = 420;
+let default_threshold = -10;
+
+/*
+Structure dict modules
+
+modules[module_id].latitude = params["latitude"];
+modules[module_id].longitude = params["longitude"];  
+modules[module_id].frq_start = params["frq_start"];
+modules[module_id].frq_end = params["frq_end"];
+modules[module_id].threshold = params["threshold"];
+modules[module_id].applied = true;
+modules[module_id].last_activity = true;
+*/
+
+
 
 //initialize
 (function() {
@@ -23,7 +45,7 @@ const socket = io();
 function DateLisible(dateObj)
 {
   return dateObj.toLocaleDateString('fr-fr') + ' ' +
-        dateObj.toTimeString().substring(0,8);      
+        dateObj.toTimeString().substring(0,8);
 }
 
 function round(x, nb) {
@@ -67,14 +89,6 @@ function pretty_frq(frq) {
 
 
 
-let carto_min_date = 0, carto_max_date = 0;
-let carto_start_range = 0, carto_end_range = 0;
-
-let default_frq_start = 400;
-let default_frq_end = 420;
-let default_threshold = -10;
-
-
 function import_detections(_detections) {
   
   let data = [];
@@ -107,6 +121,8 @@ function import_detections(_detections) {
   bandeau_init(detections);
 }
 
+
+
 function import_modules(_modules)
 {
   //on parcourt les modules insérés dans le template
@@ -121,7 +137,7 @@ function import_modules(_modules)
     modules[module_id] = {
       'frq_start': _modules[i][1], 'frq_end': _modules[i][2], 'threshold': threshold,
       'latitude': _modules[i][4], 'longitude': _modules[i][5], 
-      'last_ping': _modules[i][6], 'config_applied': _modules[i][7] };
+      'last_activity': _modules[i][6], 'config_applied': _modules[i][7]};
     
     //ajout dans le DOM
     add_module_dom(module_id);
@@ -133,4 +149,13 @@ function import_modules(_modules)
   carto_import_modules(modules);
 }
 
+function download_csv() {
+  location.href = '/download';
+}
 
+function reset_db() {
+  if (confirm('Remettre à zéro la base de données ?')) {
+    send_reset_db();
+    setTimeout(function () { location.reload(); }, 750);
+  }
+}

@@ -152,8 +152,6 @@ def reset_db(args):
 
 
 
-
-
 @socketio.on('request_gps')
 def request_gps(module_id):
     module_id = int(module_id)
@@ -161,6 +159,8 @@ def request_gps(module_id):
     pkt = Packet(MsgType.REQUEST_GPS.value, params.local_msg_id, module_id)
     add_history(pkt)
     lora.send_bytes(pkt.build())
+
+    increment_msg_id()
 
 
 @socketio.on('request_conf')
@@ -170,6 +170,8 @@ def request_conf(module_id):
     pkt = Packet(MsgType.REQUEST_CONF.value, params.local_msg_id, module_id)
     add_history(pkt)
     lora.send_bytes(pkt.build())
+
+    increment_msg_id()
 
 
 
@@ -273,6 +275,8 @@ def callback_lora(data):
         db.commit()
         socketio.emit('got_frq', {'dt': current_dt, 'module_id': msg_from, 'frq': frq, 'pwr': pwr})
 
+        update_module_activity(msg_from)
+
     #receive PING (probably from tester)
     elif msg_type == MsgType.PING.value:
 
@@ -286,6 +290,7 @@ def callback_lora(data):
         
         #check history
         original_msg = get_history_msg(msg_id=msg_id, msg_from_to=msg_from)
+        update_module_activity(msg_from)
 
         if not original_msg:
             print("not found in history")
@@ -298,12 +303,15 @@ def callback_lora(data):
 
             cursor.execute(f"SELECT frq_start, frq_end, threshold FROM module WHERE id={msg_from}")
             module = cursor.fetchone()
+            success = False
 
             if module[0] == bytes_to_int(payload[0:2]) \
                 and module[1] == bytes_to_int(payload[2:4]) \
                 and module[2] == struct.unpack("b", int_to_bytes(payload[4], 1))[0]:
                 cursor.execute(f'UPDATE module SET config_applied=true WHERE id={msg_from}')
-                socketio.emit('got_config_ack', msg_from)
+                success = True
+            
+            socketio.emit('got_config_ack', {"module_id": msg_from, "success": success})
 
         elif original_msg_type == MsgType.CONF_LORA.value:
             pass
@@ -359,8 +367,17 @@ def gps_loop():
                 gps.handle_ubx_packet(p)
 
             if gps.location.latitude and gps.location.longitude:
-                params.current_lat = gps.location.latitude
-                params.current_lng = gps.location.longitude
+
+                fix_3d, gnss_fix_ok, correction_applied = gps.check_pos_validity()
+
+                if fix_3d:
+                    params.current_lat = gps.location.latitude
+                    params.current_lng = gps.location.longitude
+
+                    if params.debug:
+                        print(f"lat : {params.current_lat} / lng {params.current_lng}")
+                        log(f"lat : {params.current_lat} / lng {params.current_lng}")
+
                 socketio.emit('set_master_position', {"latitude": params.current_lat, "longitude": params.current_lng})
 
 
@@ -373,13 +390,20 @@ def gps_loop():
                 set_system_date(gps.utc_time.datetime)
                 params.time_set = True
 
-            if params.debug:
-                print(f"lat : {params.current_lat} / lng {params.current_lng}")
-                log(f"lat : {params.current_lat} / lng {params.current_lng}")
 
 
         time.sleep(params.delay_gps)
 
+
+##################
+#
+# Module management
+#
+##################
+
+def update_module_activity(module_id):
+    cursor.execute(f"UPDATE module SET last_ping='{time.time()}' WHERE id={module_id}")
+    db.commit()
 
 
 ##################

@@ -16,6 +16,7 @@ dashboard
 
 master
 - redirection https -> http
+ajout www.dia.com
 
 
 GPS : si nofix, renvoyer la position 0/0
@@ -30,7 +31,8 @@ GPS : si nofix, renvoyer la position 0/0
     loading lors de l'envoi de MSG
 
 
-rtl_power si manque de précision (surtout sur les fréquences rondes) : ajouter de l'overmap
+rtl_power 
+- si manque de précision (surtout sur les fréquences rondes) : ajouter de l'overmap
 
 
 - TDOA

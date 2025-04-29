@@ -15,6 +15,11 @@ let heatmapcfg = {
   latField: 'latitude', lngField: 'longitude', valueField: 'count'
 };
 
+let available_zooms = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+let start_point = [48.8, 7.84];
+let start_zoom = 8;
+
+
 
 function get_windows_width() {
   return window.innerWidth - 30;
@@ -36,7 +41,7 @@ function carto_init() {
   //var URL_CARTO = "https://{s}.tile.openstreetmap.org"; //carto online
   
   var baseLayer = L.tileLayer(URL_CARTO + '/{z}/{x}/{y}.png', { 
-    nativeZooms: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] });
+    nativeZooms: available_zooms });
   heatmapLayer = new HeatmapOverlay(heatmapcfg);
 
   
@@ -47,7 +52,7 @@ function carto_init() {
     //zoom: 8,
     minZoom: 1,
     layers: [baseLayer]
-  }).setView([48.8, 7.84], 8);
+  }).setView(start_point, start_zoom);
   
 
   let layerControl = L.control.layers({'Fond carto': baseLayer }).addTo(map);

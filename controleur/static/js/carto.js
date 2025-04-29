@@ -14,6 +14,7 @@ function update_slider_range()
   document.getElementById('toSliderTooltip').innerText = DateLisible(new Date(carto_end_range));
 }
 
+
 //init bandeau using timestamp in points array
 function bandeau_init(points)
 {
@@ -36,6 +37,7 @@ function bandeau_init(points)
   }
 }
 
+
 //empty bandeau
 function bandeau_empty()
 {
@@ -48,6 +50,7 @@ function bandeau_empty()
 
 /*** Import ***/
 
+//Create a point for each modules (if said module has coordinates)
 function carto_import_modules(_modules)
 {
   for (module_id in _modules)
@@ -65,32 +68,45 @@ function carto_import_modules(_modules)
 
 /*** Misc ***/
 
+
+//center map on the master module position
 function center_master() {
   center_view(master_layer._latlng.lat, master_layer._latlng.lng);
 }
 
 
+//center map on provided point
 function center_view(latitude, longitude) {
   let zoom = 8;
   map.setView([latitude, longitude], zoom);
 }
 
 
+//center map on provided points
+function center_map_view(points)
+{
+    let b = find_bounds(points);
+    map.fitBounds(b, { maxZoom:12 });
+}
+
+
+//find first and last date in many arrays
 function get_min_max_date(...tab)
 {
   let min, max;
+  let date_column = 1;
 
   for (let i = 0; i < tab.length; i++)
   {
     for (let j = 0; j < tab[i].length; j++)
     {
       if (typeof min === 'undefined') {
-        min = tab[i][j][1];
-        max = tab[i][j][1];
+        min = tab[i][j][date_column];
+        max = tab[i][j][date_column];
       }
 
-      if (min > tab[i][j][1]) min = tab[i][j][1];
-      if (max < tab[i][j][1]) max = tab[i][j][1];
+      if (min > tab[i][j][date_column]) min = tab[i][j][date_column];
+      if (max < tab[i][j][date_column]) max = tab[i][j][date_column];
     }
   }
 
@@ -100,7 +116,7 @@ function get_min_max_date(...tab)
 
 /*** Draw ***/
 
-
+//Move master position on map. Create point if needed
 function set_master_position(latitude, longitude) {
 
   if (master_layer == null) {
@@ -112,7 +128,8 @@ function set_master_position(latitude, longitude) {
   }
 }
 
-//Draw a point
+
+//Draw a point and return created layer
 function draw_point(coordPoint, data = {}, taille = 4, couleur = "#000000")
 {
   let layer = L.circleMarker(coordPoint, {
@@ -124,6 +141,7 @@ function draw_point(coordPoint, data = {}, taille = 4, couleur = "#000000")
 }
 
 
+//show tooltip. if timeout is 0, tooltip is always showing
 function add_tooltip(layer, label, timeout=0) {
   
   layer.bindTooltip(label.toString(), {permanent:true, opacity: 0.8, className: 'tooltip'}).openTooltip();
@@ -136,7 +154,9 @@ function add_tooltip(layer, label, timeout=0) {
 }
 
 
+//return the layer that contains a module point
 function get_module_layer(module_id) {
+
   for (var i = 0; i < modules_layers.length; i++) {
     if (modules_layers[i].options.data.module_id == module_id)
       return modules_layers[i];
@@ -145,6 +165,7 @@ function get_module_layer(module_id) {
 }
 
 
+//enable/disable heatmap
 function show_heatmap(show)
 {
   if (show) layerControl._layers[1].layer.addTo(map);
@@ -176,7 +197,7 @@ function draw_heatmap(_detections)
 
 /*** Map management ***/
 
-
+//On click on module, show tooltip containing three last detections 
 function on_click_module(e) {
     let module_id = e.target.options.data.module_id;
     let module_layer = get_module_layer(module_id);
@@ -198,11 +219,14 @@ function on_click_module(e) {
 }
 
 
-function ChangerTypeCoord(mgrs)
+//switch coord type between mgrs and lat/long
+function switch_coord_type(mgrs)
 {
   typeCoord = (mgrs) ? 'mgrs' : 'latlong';
 }
 
+
+//returns coordinates of a rectangle that contains every point in points
 function find_bounds(points)
 {
     let N = -99999, S = 99999, E = -99999, W = 99999;
@@ -219,12 +243,5 @@ function find_bounds(points)
 
     if ([N,S,E,W].includes(99999) || [N,S,E,W].includes(-99999)) return [[0,0], [0,0]];
     return [[N, W], [S, E]];
-}
-
-
-function center_map_view(points)
-{
-    let b = find_bounds(points);
-    map.fitBounds(b, { maxZoom:12 });
 }
 
